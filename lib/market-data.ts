@@ -265,12 +265,25 @@ export async function getIntradayOHLCV(ticker: string): Promise<any[]> {
       })
     }
 
-    // Get the last trading day (not today, which may be incomplete)
+    // Get the last trading day (prioritize Friday, then fall back to last available)
     const dates = Array.from(byDate.keys()).sort().reverse()
+    
+    // First try to find Friday's data
+    const fridayDate = dates.find(d => {
+      const day = new Date(d).getDay()
+      return day === 5 // Friday = 5 in JS Date
+    })
+    
+    // If Friday exists and has good data, use it
+    if (fridayDate && byDate.get(fridayDate)?.length >= 50) {
+      const data = byDate.get(fridayDate) || []
+      return data.filter((d: any) => d.close > 0)
+    }
+    
+    // Otherwise, use the most recent trading day (skip incomplete today)
     const lastCompleteDay = dates.find(d => {
-      // Skip today if it's incomplete (fewer than 5 candles)
       const count = byDate.get(d)?.length || 0
-      return count >= 5 && d !== new Date().toISOString().split('T')[0]
+      return count >= 50 // At least 50 candles = complete session
     }) || dates[0]
 
     return (byDate.get(lastCompleteDay) || []).filter((d: any) => d.close > 0)
