@@ -231,11 +231,12 @@ export async function getHistoricalOHLCV(ticker: string, period: string): Promis
   }
 }
 
-// ─── Intraday (Yahoo — 1D chart) ──────────────────────────────────────────────
+// ─── Intraday (Yahoo — last complete trading day) ──────────────────────
 
 export async function getIntradayOHLCV(ticker: string): Promise<any[]> {
   try {
-    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=5m&range=1d`
+    // Use 5d range to get recent data, then filter to last trading day
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=5m&range=5d`
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' }
     })
@@ -246,12 +247,34 @@ export async function getIntradayOHLCV(ticker: string): Promise<any[]> {
 
     const ts = result.timestamp || []
     const q = result.indicators.quote[0] || {}
+    const adj = result.indicators.adjclose?.[0]?.adjclose || []
 
-    return ts.map((t: number, i: number) => ({
-      date: new Date(t * 1000),
-      open: q.open?.[i] || 0, high: q.high?.[i] || 0,
-      low: q.low?.[i] || 0, close: q.close?.[i] || 0,
-      volume: q.volume?.[i] || 0, adjClose: q.close?.[i] || 0,
-    })).filter((d: any) => d.close > 0)
-  } catch { return [] }
+    // Group by date and get the last complete trading day
+    const byDate = new Map<string, any[]>()
+    for (let i = 0; i < ts.length; i++) {
+      const date = new Date(ts[i] * 1000).toISOString().split('T')[0]
+      if (!byDate.has(date)) byDate.set(date, [])
+      byDate.get(date).push({
+        date: new Date(ts[i] * 1000),
+        open: q.open?.[i] || 0,
+        high: q.high?.[i] || 0,
+        low: q.low?.[i] || 0,
+        close: q.close?.[i] || 0,
+        volume: q.volume?.[i] || 0,
+        adjClose: adj[i] || q.close?.[i] || 0,
+      })
+    }
+
+    // Get the last trading day (not today, which may be incomplete)
+    const dates = Array.from(byDate.keys()).sort().reverse()
+    const lastCompleteDay = dates.find(d => {
+      // Skip today if it's incomplete (fewer than 5 candles)
+      const count = byDate.get(d)?.length || 0
+      return count >= 5 && d !== new Date().toISOString().split('T')[0]
+    }) || dates[0]
+
+    return (byDate.get(lastCompleteDay) || []).filter((d: any) => d.close > 0)
+  } catch {
+    return []
+  }
 }
