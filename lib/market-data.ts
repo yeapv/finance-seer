@@ -268,11 +268,15 @@ export async function getIntradayOHLCV(ticker: string): Promise<any[]> {
     // Get the last trading day (prioritize Friday, then fall back to last available)
     const dates = Array.from(byDate.keys()).sort().reverse()
     
-    // First try to find Friday's data
-    const fridayDate = dates.find(d => {
-      const day = new Date(d).getDay()
-      return day === 5 // Friday = 5 in JS Date
-    })
+    // Helper: get day of week from UTC date string (0=Sun, 1=Mon, ..., 5=Fri, 6=Sat)
+    const getUTCDay = (utcDate: string): number => {
+      const [year, month, day] = utcDate.split('-').map(Number)
+      const date = new Date(Date.UTC(year, month - 1, day))
+      return date.getUTCDay()
+    }
+    
+    // First try to find Friday's data (UTC Friday = day 5)
+    const fridayDate = dates.find(d => getUTCDay(d) === 5)
     
     // If Friday exists and has good data, use it
     if (fridayDate && byDate.get(fridayDate)?.length >= 50) {

@@ -8,6 +8,7 @@
     "app/api/portfolio/midday/route.ts":  { "maxDuration": 60 },
     "app/api/portfolio/close/route.ts":   { "maxDuration": 60 },
     "app/api/watchlist/analyze/route.ts": { "maxDuration": 60 },
-    "app/api/basket/route.ts":            { "maxDuration": 60 }
+    "app/api/basket/route.ts":            { "maxDuration": 60 },
+    "app/api/analyze/route.ts":            { "maxDuration": 60 }
   }
 }
