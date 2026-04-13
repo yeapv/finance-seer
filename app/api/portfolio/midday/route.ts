@@ -1,6 +1,7 @@
 /**
- * Midday Cron — 17:00 UTC Mon-Fri (NYSE mid-session)
- * Deeper check with trailing stop logic, min hold days, signal flip
+ * Midday Cron — 17:30 UTC (01:30 SGT, next day) Mon-Fri
+ * NYSE mid-session check with trailing stop logic, min hold days, signal flip
+ * Uses UTC 24h format consistently throughout codebase.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getLiveQuote } from '@/lib/market-data'

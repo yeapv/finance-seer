@@ -171,7 +171,7 @@ export async function GET() {
     const utcDow   = utcNow.getUTCDay() // 0=Sun, 6=Sat
     const todaySGT = todayUTC // use UTC date for consistency
 
-    // NYSE trading hours: 13:30-20:05 UTC Mon-Fri
+    // NYSE trading hours: 13:30-20:00 UTC (21:30-04:00 SGT)
     const inNYSE = utcDow >= 1 && utcDow <= 5 && utcTime >= 1330 && utcTime < 2005
     const marketsOpen = inNYSE
 

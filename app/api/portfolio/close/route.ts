@@ -1,6 +1,6 @@
 /**
- * Close Cron — 20:05 UTC Mon-Fri (NYSE close)
- * End-of-day summary — reporting only, no trading
+ * Close Cron — 20:05 UTC (04:05 SGT, next day) Mon-Fri
+ * NYSE end-of-day summary — reporting only, no trading
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getLiveQuote, getHistoricalOHLCV } from '@/lib/market-data'

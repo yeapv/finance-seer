@@ -41,7 +41,7 @@ export function getCurrentMarketSession(): 'NYSE' | 'CLOSED' {
 
   if (dayOfWeek === 0 || dayOfWeek === 6) return 'CLOSED'
 
-  // NYSE: 13:30-20:05 UTC (buffer to 20:05 so close cron at 20:05 runs)
+  // NYSE trading hours: 13:30-20:00 UTC (buffer to 20:05 for closing data feed)
   const nyseOpen = utcTime >= 1330 && utcTime < 2005
   return nyseOpen ? 'NYSE' : 'CLOSED'
 }
