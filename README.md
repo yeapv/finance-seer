@@ -75,12 +75,12 @@ pm2 delete all
 #### Environment Variables:
 ```bash
 NODE_ENV=production
-FINNHUB_API_KEY="d7egi31r01qi33g66ksgd7egi31r01qi33g66kt0"
-OPENAI_API_KEY="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"
+FINNHUB_API_KEY="your_finnhub_api_key_here"
+OPENAI_API_KEY="your_openai_api_key_here"
 OPENAI_API_URL="http://192.168.10.163:11434/v1"
 AI_MODEL="qwen3.5:122b"
-TELEGRAM_BOT_TOKEN="8609316971:AAFhvA7fOyXRx5ch5Mm740ajcjMRD5brIr4"
-TELEGRAM_CHAT_ID="786437034"
+TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
+TELEGRAM_CHAT_ID="your_chat_id"
 ```
 
 ### Option 2: Docker (Production)
