@@ -204,48 +204,31 @@ jobs:
         echo "================================="
         exit 1
 
-  # ====== OPTIONAL: TELEGRAM NOTIFICATIONS ======
+  # ====== TELEGRAM NOTIFICATION ======
   notify-telegram:
     name: Send Telegram Notification
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests, deployment-check]
+    needs: [deployment-check]
     if: always()
     
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     
-    - name: Send Test Results to Telegram
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    
+    - name: Send Telegram Notification
       run: |
-        curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "chat_id": "${{ secrets.TELEGRAM_CHAT_ID }}",
-            "text": "🤖 *Finance Seer CI/CD Status*\n\n📦 Build: ${{ github.event.repository.name }}\n🔗 Commit: ${{ github.sha }}\n📅 Time: $(date -u +"%Y-%m-%dT%H:%M:%SZ")\n\n'"$( if [ \"${{ needs.deployment-check.result }}\" == \"success\" ]; then echo "✅ **ALL TESTS PASSED**"; else echo "❌ **TESTS FAILED** - Review needed"; fi )"'"\n\n🔍 View Results: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n'"$( if [ \"${{ needs.deployment-check.result }}\" == \"failure\" ]; then echo "⚠️ Deployment blocked due to test failures"; fi )"'"
-          }'
-      shell: bash
+        cd /home/joobi/.openclaw/workspace/finance-seer
+        node scripts/send-ci-notification.js
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-#   name: Deploy to Production
-#   runs-on: ubuntu-latest
-#   needs: deployment-check
-#   if: github.ref == 'refs/heads/main'
-#   steps:
-#   - uses: actions/checkout@v4
-#   
-#   - name: Deploy to Vercel
-#     uses: amondnet/vercel-action@v25
-#     with:
-#       vercel-token: ${{ secrets.VERCEL_TOKEN }}
-#       vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-#       vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-#       vercel-args: '--prod'
-#     env:
-#       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
-#       MKTS_API_KEY: ${{ secrets.MKTS_API_KEY }}
-#       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-#       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-#       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-#       OPENAI_API_URL: ${{ secrets.OPENAI_API_URL }}
+        DEPLOYMENT_RESULT: ${{ needs.deployment-check.result }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_SHA: ${{ github.sha }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_SERVER_URL: ${{ github.server_url }}
+        GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
