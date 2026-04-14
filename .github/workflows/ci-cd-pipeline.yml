@@ -212,23 +212,22 @@ jobs:
     if: always()
     
     steps:
-    - name: Send Test Results to Telegram
-      uses: appleboy/telegram-send-action@v1.1.0
+    - uses: actions/checkout@v4
       with:
-        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
-        message: |
-          🤖 *Finance Seer CI/CD Status*
-          
-          📦 Build: ${{ github.event.repository.name }}
-          🔗 Commit: ${{ github.sha }}
-          📅 Time: ${{ github.event.head_commit.timestamp }}
-          
-          ${% if needs.deployment-check.outcome == 'success' %}✅ **ALL TESTS PASSED**${% else %}❌ **TESTS FAILED** - Review needed${% endif %}
-          
-          🔍 View Results: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          
-          ${{ needs.deployment-check.result == 'failure' && '⚠️ Deployment blocked due to test failures' || '' }}
+        fetch-depth: 0
+    
+    - name: Send Test Results to Telegram
+      run: |
+        curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "chat_id": "${{ secrets.TELEGRAM_CHAT_ID }}",
+            "text": "🤖 *Finance Seer CI/CD Status*\n\n📦 Build: ${{ github.event.repository.name }}\n🔗 Commit: ${{ github.sha }}\n📅 Time: $(date -u +"%Y-%m-%dT%H:%M:%SZ")\n\n'"$( if [ \"${{ needs.deployment-check.result }}\" == \"success\" ]; then echo "✅ **ALL TESTS PASSED**"; else echo "❌ **TESTS FAILED** - Review needed"; fi )"'"\n\n🔍 View Results: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n'"$( if [ \"${{ needs.deployment-check.result }}\" == \"failure\" ]; then echo "⚠️ Deployment blocked due to test failures"; fi )"'"
+          }'
+      shell: bash
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 #   name: Deploy to Production
 #   runs-on: ubuntu-latest
 #   needs: deployment-check
