@@ -308,10 +308,10 @@
   ],
   "note": "Reset 2026-04-08: matched to IBKR paper account DU7992310 NLV (SGD 1,042,178 @ 0.7854 = USD 818,527)",
   "ibkrNLV": {
-    "sgd": 1041929.93,
+    "sgd": 1041929.94,
     "usd": 818331.77,
     "rate": 0.7854,
-    "syncedAt": "2026-04-14T19:39:56.065627Z"
+    "syncedAt": "2026-04-14T19:46:12.836217Z"
   },
   "pendingTrades": {},
   "tradeHistory": [],
