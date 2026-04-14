@@ -33,25 +33,20 @@ jobs:
         cache: 'pip'
     
     - name: Install Node dependencies
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        npm ci --legacy-peer-deps
+      run: npm ci --legacy-peer-deps
     
     - name: Install Python dependencies
       run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
         python3 -m venv .venv
         source .venv/bin/activate
         pip install -U tvscreener
     
     - name: Run ESLint (if available)
       run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
         npm run lint 2>/dev/null || echo "No lint script configured"
     
     - name: Check Python syntax
       run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
         source .venv/bin/activate
         python -m py_compile scripts/*.py || echo "Some Python files have syntax issues"
 
@@ -77,39 +72,28 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
     
     - name: Install Node dependencies
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        npm ci --legacy-peer-deps
+      run: npm ci --legacy-peer-deps
     
     - name: Install Python dependencies
       run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
         python3 -m venv .venv
         source .venv/bin/activate
         pip install -U tvscreener
     
     - name: Run Trading Safety Tests
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        node tests/unit/trading-safety.test.js
+      run: node tests/unit/trading-safety.test.js
       timeout-minutes: 10
     
     - name: Run Heartbeat Status Tests (Unit)
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        node tests/unit/heartbeat-status.test.js
+      run: node tests/unit/heartbeat-status.test.js
       timeout-minutes: 10
     
     - name: Run Heartbeat Status Tests (Real)
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        node tests/unit/heartbeat-status-real.test.js
+      run: node tests/unit/heartbeat-status-real.test.js
       timeout-minutes: 10
     
     - name: Run All Integration Tests
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        node scripts/complete-test-suite.js || echo "Some integration tests failed - review logs"
+      run: node scripts/complete-test-suite.js || echo "Some integration tests failed - review logs"
       timeout-minutes: 30
       continue-on-error: true
 
@@ -135,35 +119,26 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
     
     - name: Install Node dependencies
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        npm ci --legacy-peer-deps
+      run: npm ci --legacy-peer-deps
     
     - name: Install Python dependencies
       run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
         python3 -m venv .venv
         source .venv/bin/activate
         pip install -U tvscreener
     
     - name: Run Comprehensive System Test
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        node scripts/comprehensive-test.js || echo "System test warnings - review output"
+      run: node scripts/comprehensive-test.js || echo "System test warnings - review output"
       timeout-minutes: 30
       continue-on-error: true
     
     - name: Run Live Test
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        node scripts/live-test.js || echo "Live test warnings - review output"
+      run: node scripts/live-test.js || echo "Live test warnings - review output"
       timeout-minutes: 30
       continue-on-error: true
     
     - name: Run Complete System Test
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        node scripts/complete-system-test.js || echo "Complete system test warnings - review output"
+      run: node scripts/complete-system-test.js || echo "Complete system test warnings - review output"
       timeout-minutes: 30
       continue-on-error: true
 
@@ -220,9 +195,7 @@ jobs:
         node-version: '22'
     
     - name: Send Telegram Notification
-      run: |
-        cd /home/joobi/.openclaw/workspace/finance-seer
-        node scripts/send-ci-notification.js
+      run: node scripts/send-ci-notification.js
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
