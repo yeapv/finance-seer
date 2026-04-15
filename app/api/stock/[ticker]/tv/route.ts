@@ -81,8 +81,9 @@ function calculateTechnicalIndicators(history: any[]): any {
       atr: clean(latest?.atr),
       week52_high: clean(latest?.week52High),
       week52_low: clean(latest?.week52Low),
-      patterns: Object.keys(patterns).reduce((acc, key) => {
-        if (patterns[key] && patterns[key] !== 'none') {
+      patterns: Object.keys(patterns).reduce((acc: Record<string, number>, key: string) => {
+        const val = (patterns as unknown as Record<string, unknown>)[key]
+        if (val && val !== 'none') {
           acc[key] = 1
         }
         return acc
@@ -106,7 +107,7 @@ export async function GET(_: NextRequest, { params }: { params: { ticker: string
   try {
     // Get latest quote
     const quote = await getLiveQuote(ticker)
-    if (!quote || quote.error) {
+    if (!quote) {
       return NextResponse.json(
         { error: `Could not fetch data for ${ticker}` },
         { status: 404 }

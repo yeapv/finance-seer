@@ -1,14 +1,16 @@
 /**
- * Get live stock data from MKTS.io (primary) → Finnhub (fallback)
+ * Market Data — MKTS.io (primary) → Finnhub (fallback)
  * MKTS.io API: https://mkts.io/developers
- * Deployed: 2026-04-15 22:36 UTC - Force cache bust
- * 
- * MKTS.io provides:
- *   - Real-time quotes (price, OHLC, volume) via /asset/{symbol}
- *   - Fundamentals via /asset/{symbol}/details
- *   - Historical OHLCV data
- *   - Analyst consensus (targets, recommendations)
+ *
+ * Functions exported:
+ *   getLiveQuote(ticker)          — real-time quote
+ *   getHistoricalOHLCV(ticker, period) — daily OHLCV candles
+ *   getIntradayOHLCV(ticker)      — intraday 5-min candles (falls back to 1d daily)
+ *   getNews(ticker)               — recent news with sentiment
+ *   getFundamentals(ticker)       — PE, margins, analyst consensus, etc.
  */
+
+// ─── Interfaces ───────────────────────────────────────────────────────────────
 
 export interface HistoricalData {
   date: Date
@@ -19,10 +21,6 @@ export interface HistoricalData {
   volume: number
   adjClose: number
 }
-
-const MKTS_BASE = 'https://mkts.io/api/v1'
-const MKTS_API_KEY = process.env.MKTS_API_KEY || ''
-const FINNHUB_KEY = process.env.FINNHUB_API_KEY || ''
 
 export interface StockData {
   ticker: string
@@ -48,37 +46,49 @@ export interface StockData {
   targetPrice?: number
 }
 
-/**
- * Get live stock data from MKTS.io (primary) → Finnhub (fallback)
- * MKTS.io endpoint: GET /api/v1/asset/{symbol}
- */
+export interface NewsItem {
+  headline: string
+  summary: string
+  url: string
+  datetime: number
+  source: string
+  sentiment: 'positive' | 'negative' | 'neutral'
+}
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+const MKTS_BASE    = 'https://mkts.io/api/v1'
+const MKTS_API_KEY = process.env.MKTS_API_KEY || ''
+const FINNHUB_KEY  = process.env.FINNHUB_API_KEY || ''
+
+// ─── getLiveQuote ─────────────────────────────────────────────────────────────
+
 export async function getLiveQuote(ticker: string): Promise<StockData | null> {
-  // Try MKTS.io first (if API key configured)
   if (MKTS_API_KEY) {
     try {
       const res = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}`, {
-        headers: { 'X-API-Key': MKTS_API_KEY }
+        headers: { 'X-API-Key': MKTS_API_KEY },
       })
 
       if (res.ok) {
         const json = await res.json()
         if (json.success && json.data) {
-          const snapshotData = json.data
-          const price = snapshotData.price || 0
-          const change24h = snapshotData.change24h || 0
-        
-          console.log(`[MKTS.io] Retrieved ${ticker} snapshot: $${price.toFixed(2)}, ${change24h}%`)
-          
-          // Now fetch additional details from /details endpoint
-          let details = null
+          const snap = json.data
+          const price    = snap.price     || 0
+          const change24h = snap.change24h || 0
+
+          console.log(`[MKTS.io] ${ticker} snapshot: $${price.toFixed(2)}, ${change24h}%`)
+
+          // Fetch fundamentals/details in parallel to enrich the quote
+          let details: Record<string, any> | null = null
           try {
-            const detailsRes = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/details`, {
-              headers: { 'X-API-Key': MKTS_API_KEY }
+            const dRes = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/details`, {
+              headers: { 'X-API-Key': MKTS_API_KEY },
             })
-            if (detailsRes.ok) {
-              const detailsJson = await detailsRes.json()
-              if (detailsJson.success && detailsJson.data) {
-                details = detailsJson.data
+            if (dRes.ok) {
+              const dJson = await dRes.json()
+              if (dJson.success && dJson.data) {
+                details = dJson.data
               }
             }
           } catch (e) {
@@ -86,146 +96,294 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
           }
 
           return {
-            ticker: ticker.toUpperCase(),
-            name: snapshotData.name || details?.name || ticker.toUpperCase(),
-            price: price,
-            change: change24h,
+            ticker:        ticker.toUpperCase(),
+            name:          snap.name          || details?.name          || ticker.toUpperCase(),
+            price,
+            change:        change24h,
             changePercent: change24h,
-            volume: snapshotData.volume24h || snapshotData.volume || details?.volume || 0,
-            marketCap: snapshotData.marketCap || details?.marketCap || 0,
-            peRatio: details?.trailingPE || 0,
+            volume:        snap.volume24h      || snap.volume           || details?.volume      || 0,
+            marketCap:     snap.marketCap      || details?.marketCap    || 0,
+            peRatio:       details?.trailingPE || 0,
             dividendYield: details?.dividendYield || 0,
-            dayHigh: snapshotData.h || details?.h || price,
-            dayLow: snapshotData.l || details?.l || price,
-            open: snapshotData.o || details?.o || price,
+            dayHigh:       snap.h              || details?.h            || price,
+            dayLow:        snap.l              || details?.l            || price,
+            open:          snap.o              || details?.o            || price,
             previousClose: price - change24h,
-            week52High: details?.fiftyTwoWeekHigh || 0,
-            week52Low: details?.fiftyTwoWeekLow || 0,
-            currency: snapshotData.currency || 'USD',
-            exchange: snapshotData.exchange || '',
-            sector: snapshotData.sector || details?.sector || undefined,
-            industry: details?.industry || undefined,
+            week52High:    details?.fiftyTwoWeekHigh || 0,
+            week52Low:     details?.fiftyTwoWeekLow  || 0,
+            currency:      snap.currency       || 'USD',
+            exchange:      snap.exchange       || '',
+            sector:        snap.sector         || details?.sector       || undefined,
+            industry:      details?.industry   || undefined,
             recommendation: details?.recommendationKey,
-            targetPrice: details?.targetPrice,
+            targetPrice:   details?.targetPrice,
           }
         }
       }
-      
-      console.log(`[MKTS.io] No data for ${ticker}, trying Finnhub fallback`)
-    } catch (error) {
-      console.log(`[MKTS.io] Error for ${ticker}:`, error.message)
+
+      console.log(`[MKTS.io] No data for ${ticker}, falling back to Finnhub`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.log(`[MKTS.io] Error for ${ticker}:`, msg)
     }
   }
 
-  // Fallback to Finnhub (your existing API)
-  return await getFinnhubQuote(ticker)
+  return getFinnhubQuote(ticker)
 }
 
+// ─── getHistoricalOHLCV ───────────────────────────────────────────────────────
+
 /**
- * Get stock data from Finnhub (fallback)
+ * Daily OHLCV candles for the requested period.
+ * period: '5d' | '1mo' | '3mo' | '6mo' | '1y' | '5y'
  */
-async function getFinnhubQuote(ticker: string): Promise<StockData | null> {
-  if (!FINNHUB_KEY) {
-    console.log('[Finnhub] No API key configured, cannot fetch data')
-    return null
+export async function getHistoricalOHLCV(ticker: string, period: string): Promise<HistoricalData[]> {
+  if (MKTS_API_KEY) {
+    try {
+      const res = await fetch(
+        `${MKTS_BASE}/asset/${ticker.toUpperCase()}/history?period=${period}`,
+        { headers: { 'X-API-Key': MKTS_API_KEY } }
+      )
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && json.data?.candles?.length) {
+          return json.data.candles.map((c: any): HistoricalData => ({
+            date:     new Date(c.date),
+            open:     c.open   || 0,
+            high:     c.high   || 0,
+            low:      c.low    || 0,
+            close:    c.close  || 0,
+            volume:   c.volume || 0,
+            adjClose: c.close  || 0,
+          }))
+        }
+      }
+      console.log(`[MKTS.io] No history for ${ticker} (${period}), falling back to Finnhub`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.log(`[MKTS.io] History error for ${ticker}:`, msg)
+    }
   }
+
+  return getFinnhubHistory(ticker, period)
+}
+
+// ─── getIntradayOHLCV ─────────────────────────────────────────────────────────
+
+/**
+ * Intraday candles for today (5-min bars where available, else 1d daily).
+ */
+export async function getIntradayOHLCV(ticker: string): Promise<HistoricalData[]> {
+  if (MKTS_API_KEY) {
+    try {
+      const res = await fetch(
+        `${MKTS_BASE}/asset/${ticker.toUpperCase()}/history?period=1d&interval=5m`,
+        { headers: { 'X-API-Key': MKTS_API_KEY } }
+      )
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && json.data?.candles?.length) {
+          return json.data.candles.map((c: any): HistoricalData => ({
+            date:     new Date(c.date),
+            open:     c.open   || 0,
+            high:     c.high   || 0,
+            low:      c.low    || 0,
+            close:    c.close  || 0,
+            volume:   c.volume || 0,
+            adjClose: c.close  || 0,
+          }))
+        }
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.log(`[MKTS.io] Intraday error for ${ticker}:`, msg)
+    }
+  }
+
+  // Fallback: last 5 daily candles as "intraday" approximation
+  return getHistoricalOHLCV(ticker, '5d')
+}
+
+// ─── getNews ──────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch recent company news via Finnhub (MKTS.io news endpoint not available).
+ */
+export async function getNews(ticker: string): Promise<NewsItem[]> {
+  if (!FINNHUB_KEY) return []
 
   try {
-    const [quoteRes, chartRes] = await Promise.allSettled([
-      fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${FINNHUB_KEY}`),
-      fetch(`https://finnhub.io/api/v1/company-profile2?symbol=${ticker.toUpperCase()}&token=${FINNHUB_KEY}`)
-    ])
+    const to   = new Date()
+    const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // last 7 days
+    const fmt  = (d: Date) => d.toISOString().split('T')[0]
 
-    const quoteData = quoteRes.status === 'fulfilled' && quoteRes.value.ok ? await quoteRes.value.json() : null
-    const profileData = chartRes.status === 'fulfilled' && chartRes.value.ok ? await chartRes.value.json() : null
+    const res = await fetch(
+      `https://finnhub.io/api/v1/company-news?symbol=${ticker.toUpperCase()}&from=${fmt(from)}&to=${fmt(to)}&token=${FINNHUB_KEY}`
+    )
+    if (!res.ok) return []
 
-    if (!quoteData?.c || quoteData.c === 0) return null
+    const raw: any[] = await res.json()
+    if (!Array.isArray(raw)) return []
 
-    const price = quoteData.c
-    const prevClose = quoteData.o - quoteData.d
-    const change = quoteData.d
-
-    return {
-      ticker: ticker.toUpperCase(),
-      name: profileData?.Name || ticker.toUpperCase(),
-      price: price,
-      change: change,
-      changePercent: prevClose > 0 ? (change / prevClose) * 100 : 0,
-      volume: quoteData?.v || 0,
-      marketCap: 0, // Not available in Finnhub quote API
-      peRatio: 0, // Not available in quote API
-      dividendYield: 0, // Not available in quote API
-      dayHigh: quoteData?.h || price,
-      dayLow: quoteData?.l || price,
-      open: quoteData?.o || price,
-      previousClose: prevClose,
-      week52High: profileData?.FiftyTwoWeekHigh || 0,
-      week52Low: profileData?.FiftyTwoWeekLow || 0,
-      currency: profileData?.Currency || 'USD',
-      exchange: profileData?.StockExchange || '',
-      sector: undefined,
-      industry: undefined,
-      recommendation: undefined,
-      targetPrice: undefined,
-    }
-  } catch (error) {
-    console.error(`Finnhub quote fetch failed for ${ticker}:`, error)
-    return null
+    return raw.slice(0, 20).map((n): NewsItem => ({
+      headline:  n.headline  || '',
+      summary:   n.summary   || '',
+      url:       n.url       || '',
+      datetime:  n.datetime  || 0,
+      source:    n.source    || '',
+      sentiment: scoreSentiment(n.headline + ' ' + n.summary),
+    }))
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`[Finnhub] News error for ${ticker}:`, msg)
+    return []
   }
 }
 
-/**
- * Get fundamentals data from MKTS.io /details endpoint
- */
+function scoreSentiment(text: string): 'positive' | 'negative' | 'neutral' {
+  const t = text.toLowerCase()
+  const pos = ['beat', 'surge', 'rally', 'gain', 'profit', 'growth', 'record', 'strong', 'upgrade', 'buy', 'bullish', 'rise', 'up', 'positive', 'exceed']
+  const neg = ['miss', 'drop', 'fall', 'loss', 'decline', 'weak', 'downgrade', 'sell', 'bearish', 'cut', 'down', 'negative', 'concern', 'risk', 'warn']
+  const p = pos.filter(w => t.includes(w)).length
+  const n = neg.filter(w => t.includes(w)).length
+  if (p > n) return 'positive'
+  if (n > p) return 'negative'
+  return 'neutral'
+}
+
+// ─── getFundamentals ─────────────────────────────────────────────────────────
+
 export async function getFundamentals(ticker: string) {
   if (!MKTS_API_KEY) return null
 
   try {
     const res = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/details`, {
-      headers: { 'X-API-Key': MKTS_API_KEY }
+      headers: { 'X-API-Key': MKTS_API_KEY },
     })
-
     if (!res.ok) return null
 
     const json = await res.json()
     if (!json.success) return null
 
     const d = json.data || {}
-    const result = {
-      ticker: ticker.toUpperCase(),
-      name: d.name,
-      sector: d.sector,
-      industry: d.industry,
-      recommendation: d.recommendationKey,
-      targetPrice: d.targetPrice,
-      numberOfAnalysts: d.numberOfAnalysts,
-      trailingPE: d.trailingPE,
-      forwardPE: d.forwardPE,
-      priceToBook: d.priceToBook,
-      dividendYield: d.dividendYield,
-      beta: d.beta,
-      revenueGrowth: d.revenueGrowth,
-      earningsGrowth: d.earningsGrowth,
-      grossMargins: d.grossMargins,
-      operatingMargins: d.operatingMargins,
-      profitMargins: d.profitMargins,
-      returnOnEquity: d.returnOnEquity,
-      returnOnAssets: d.returnOnAssets,
-      totalDebt: d.totalDebt,
-      debtToEquity: d.debtToEquity,
-      freeCashflow: d.freeCashflow,
-      fiftyTwoWeekHigh: d.fiftyTwoWeekHigh,
-      fiftyTwoWeekLow: d.fiftyTwoWeekLow,
-      calendarEvents: d.calendarEvents,
+    return {
+      ticker:             ticker.toUpperCase(),
+      name:               d.name,
+      sector:             d.sector,
+      industry:           d.industry,
+      recommendation:     d.recommendationKey,
+      targetPrice:        d.targetPrice,
+      numberOfAnalysts:   d.numberOfAnalysts,
+      trailingPE:         d.trailingPE,
+      forwardPE:          d.forwardPE,
+      priceToBook:        d.priceToBook,
+      dividendYield:      d.dividendYield,
+      beta:               d.beta,
+      revenueGrowth:      d.revenueGrowth,
+      earningsGrowth:     d.earningsGrowth,
+      grossMargins:       d.grossMargins,
+      operatingMargins:   d.operatingMargins,
+      profitMargins:      d.profitMargins,
+      returnOnEquity:     d.returnOnEquity,
+      returnOnAssets:     d.returnOnAssets,
+      totalDebt:          d.totalDebt,
+      debtToEquity:       d.debtToEquity,
+      freeCashflow:       d.freeCashflow,
+      fiftyTwoWeekHigh:   d.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow:    d.fiftyTwoWeekLow,
+      calendarEvents:     d.calendarEvents,
       recommendationTrend: d.recommendationTrend?.slice(0, 4) || [],
     }
-
-    return result
-  } catch (error) {
-    console.error(`MKTS fundamentals fetch failed for ${ticker}:`, error)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`[MKTS.io] Fundamentals error for ${ticker}:`, msg)
     return null
   }
 }
 
-// Simple cache for fundamentals
-const cache = new Map<string, { data: any; ts: number }>()
+// ─── Finnhub fallbacks ────────────────────────────────────────────────────────
+
+async function getFinnhubQuote(ticker: string): Promise<StockData | null> {
+  if (!FINNHUB_KEY) {
+    console.log('[Finnhub] No API key configured')
+    return null
+  }
+  try {
+    const [qRes, pRes] = await Promise.allSettled([
+      fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${FINNHUB_KEY}`),
+      fetch(`https://finnhub.io/api/v1/company-profile2?symbol=${ticker.toUpperCase()}&token=${FINNHUB_KEY}`),
+    ])
+
+    const q = qRes.status === 'fulfilled' && qRes.value.ok ? await qRes.value.json() : null
+    const p = pRes.status === 'fulfilled' && pRes.value.ok ? await pRes.value.json() : null
+
+    if (!q?.c || q.c === 0) return null
+
+    const price     = q.c
+    const prevClose = q.pc || (q.o - q.d)
+    const change    = q.d
+
+    return {
+      ticker:        ticker.toUpperCase(),
+      name:          p?.name || ticker.toUpperCase(),
+      price,
+      change,
+      changePercent: prevClose > 0 ? (change / prevClose) * 100 : 0,
+      volume:        q.v  || 0,
+      marketCap:     0,
+      peRatio:       0,
+      dividendYield: 0,
+      dayHigh:       q.h  || price,
+      dayLow:        q.l  || price,
+      open:          q.o  || price,
+      previousClose: prevClose,
+      week52High:    0,
+      week52Low:     0,
+      currency:      p?.currency || 'USD',
+      exchange:      p?.exchange  || '',
+      sector:        undefined,
+      industry:      undefined,
+      recommendation: undefined,
+      targetPrice:   undefined,
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`[Finnhub] Quote error for ${ticker}:`, msg)
+    return null
+  }
+}
+
+async function getFinnhubHistory(ticker: string, period: string): Promise<HistoricalData[]> {
+  if (!FINNHUB_KEY) return []
+
+  const periodDays: Record<string, number> = {
+    '5d': 5, '1mo': 30, '3mo': 90, '6mo': 180, '1y': 365, '5y': 1825,
+  }
+  const days = periodDays[period] || 30
+  const to   = Math.floor(Date.now() / 1000)
+  const from = to - days * 86400
+
+  try {
+    const res = await fetch(
+      `https://finnhub.io/api/v1/stock/candle?symbol=${ticker.toUpperCase()}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`
+    )
+    if (!res.ok) return []
+
+    const json = await res.json()
+    if (json.s !== 'ok' || !json.t?.length) return []
+
+    return json.t.map((ts: number, i: number): HistoricalData => ({
+      date:     new Date(ts * 1000),
+      open:     json.o[i] || 0,
+      high:     json.h[i] || 0,
+      low:      json.l[i] || 0,
+      close:    json.c[i] || 0,
+      volume:   json.v[i] || 0,
+      adjClose: json.c[i] || 0,
+    }))
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error(`[Finnhub] History error for ${ticker}:`, msg)
+    return []
+  }
+}
