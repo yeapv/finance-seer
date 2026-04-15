@@ -102,7 +102,7 @@ jobs:
 
     - name: Run Integration Tests
       run: node tests/run-integration-tests.js
-      continue-on-error: true
+      # Removed: continue-on-error: true - tests MUST pass for deployment
 
   # ====== PHASE 4: DEPLOYMENT CHECK ======
   deployment-check:
