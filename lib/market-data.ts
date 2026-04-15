@@ -137,11 +137,22 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
  * Daily OHLCV candles for the requested period.
  * period: '5d' | '1mo' | '3mo' | '6mo' | '1y' | '5y'
  */
+// Map app period strings → MKTS.io range values
+const PERIOD_TO_RANGE: Record<string, string> = {
+  '5d':  '1M',   // closest available
+  '1mo': '1M',
+  '3mo': '3M',
+  '6mo': '6M',
+  '1y':  '1Y',
+  '5y':  '1Y',   // MKTS.io max is 1Y
+}
+
 export async function getHistoricalOHLCV(ticker: string, period: string): Promise<HistoricalData[]> {
   if (MKTS_API_KEY) {
     try {
+      const range = PERIOD_TO_RANGE[period] || '3M'
       const res = await fetch(
-        `${MKTS_BASE}/asset/${ticker.toUpperCase()}/history?period=${period}`,
+        `${MKTS_BASE}/asset/${ticker.toUpperCase()}/history?range=${range}`,
         { headers: { 'X-API-Key': MKTS_API_KEY } }
       )
       if (res.ok) {
@@ -176,8 +187,9 @@ export async function getHistoricalOHLCV(ticker: string, period: string): Promis
 export async function getIntradayOHLCV(ticker: string): Promise<HistoricalData[]> {
   if (MKTS_API_KEY) {
     try {
+      // MKTS.io minimum range is 1M; use it for intraday approximation
       const res = await fetch(
-        `${MKTS_BASE}/asset/${ticker.toUpperCase()}/history?period=1d&interval=5m`,
+        `${MKTS_BASE}/asset/${ticker.toUpperCase()}/history?range=1M`,
         { headers: { 'X-API-Key': MKTS_API_KEY } }
       )
       if (res.ok) {
