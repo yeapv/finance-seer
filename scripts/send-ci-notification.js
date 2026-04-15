@@ -66,39 +66,21 @@ function sendTelegramMessage(text) {
 }
 
 /**
- * Parse test results from environment or defaults
+ * Parse real test results from CI job outputs.
+ * CI captures stdout of run-all-tests.js and run-integration-tests.js
+ * and passes the parsed counts as env vars.
  */
 function getTestResults() {
-  const deploymentResult = process.env.DEPLOYMENT_RESULT || 'success';
-  
-  // Default values - will be updated based on deployment result
-  let total = 144;
-  let passed = 0;
-  let failed = 0;
-  
-  if (deploymentResult === 'success') {
-    // All tests passed - use the known count
-    total = 144;
-    passed = 144;
-    failed = 0;
-  } else {
-    // Failed - use environment variables if set, otherwise report 0
-    const envTotal = parseInt(process.env.TEST_COUNT);
-    const envPassed = parseInt(process.env.TESTS_PASSED);
-    
-    if (!isNaN(envTotal) && !isNaN(envPassed)) {
-      total = envTotal;
-      passed = envPassed;
-      failed = total - passed;
-    } else {
-      // Fallback
-      total = 144;
-      passed = 0;
-      failed = 144;
-    }
-  }
-  
-  return { total, passed, failed };
+  const unitPassed  = parseInt(process.env.UNIT_PASSED)  || 0;
+  const unitTotal   = parseInt(process.env.UNIT_TOTAL)   || 0;
+  const intPassed   = parseInt(process.env.INT_PASSED)   || 0;
+  const intTotal    = parseInt(process.env.INT_TOTAL)    || 0;
+
+  const passed = unitPassed + intPassed;
+  const total  = unitTotal  + intTotal;
+  const failed = total - passed;
+
+  return { total, passed, failed, unitPassed, unitTotal, intPassed, intTotal };
 }
 
 /**
@@ -106,7 +88,7 @@ function getTestResults() {
  */
 async function main() {
   try {
-    const { total, passed, failed } = getTestResults();
+    const { total, passed, failed, unitPassed, unitTotal, intPassed, intTotal } = getTestResults();
     
     // Determine status
     const isPassing = failed === 0;
@@ -119,6 +101,8 @@ async function main() {
     const timestamp = now.toISOString();
     
     // Build message
+    const unitLine = unitTotal  > 0 ? `\n  • Unit:        ${unitPassed}/${unitTotal}`  : '';
+    const intLine  = intTotal   > 0 ? `\n  • Integration: ${intPassed}/${intTotal}`  : '';
     const message = `
 🤖 *Finance Seer CI/CD Status*
 
@@ -127,11 +111,9 @@ async function main() {
 📅 *Time:* ${timestamp}
 
 ${statusEmoji} *${statusText}*
-🧪 *Tests:* ${passed}/${total} passing${failed > 0 ? ` (${failed} failed)` : ''}
+🧪 *Tests:* ${passed}/${total} passing${failed > 0 ? ` (${failed} failed)` : ''}${unitLine}${intLine}
 
-🔍 *View Results:* ${SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}
-
-${warning}
+🔍 *View Results:* ${SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}${warning}
     `.trim();
 
     // Send to Telegram
