@@ -55,3 +55,6 @@ backup/
 
 # OpenClaw workspace files
 .openclaw/
+
+# Portfolio data — stored in Upstash KV, not git
+data/portfolio.json

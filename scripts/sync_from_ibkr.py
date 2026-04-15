@@ -69,13 +69,9 @@ def push_kv(data: dict):
     ur.urlopen(req, timeout=10)
 
 
-def push_git(repo: Path):
-    try:
-        subprocess.run(['git', 'add', '-f', 'data/portfolio.json'], cwd=repo, capture_output=True)
-        subprocess.run(['git', 'commit', '-m', 'Portfolio sync from IBKR [auto]'], cwd=repo, capture_output=True)
-        subprocess.run(['git', 'push', 'origin', 'master'], cwd=repo, capture_output=True)
-    except Exception:
-        pass
+# push_git removed — KV (Upstash) is the single source of truth for Vercel.
+# Git commits for portfolio data polluted history and triggered unnecessary Vercel rebuilds.
+# Heartbeat calls /api/portfolio/sync or runs this script directly; Vercel reads from KV.
 
 
 def main():
@@ -270,9 +266,6 @@ def main():
             push_kv(portfolio)
         except Exception as kv_err:
             print(f'KV sync warning: {kv_err}', file=sys.stderr)
-
-        # ── Push to git ───────────────────────────────────────────────────────
-        push_git(PORTFOLIO_PATH.parent.parent)
 
         # ── Summary output ────────────────────────────────────────────────────
         print(json.dumps({
