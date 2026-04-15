@@ -5,7 +5,8 @@
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
-const PORTFOLIO_PATH = join(process.cwd(), 'data', 'portfolio.json')
+const PORTFOLIO_PATH      = join(process.cwd(), 'data', 'portfolio.json')
+const PORTFOLIO_SEED_PATH = join(process.cwd(), 'data', 'portfolio.seed.json')
 const KV_KEY = 'portfolio'
 
 function isVercel() {
@@ -59,7 +60,12 @@ export async function readPortfolio(): Promise<any> {
       console.error('KV read failed, falling back to file:', e)
     }
   }
-  return JSON.parse(readFileSync(PORTFOLIO_PATH, 'utf-8'))
+  // Fall back to seed file if live file doesn't exist (fresh clone / CI)
+  try {
+    return JSON.parse(readFileSync(PORTFOLIO_PATH, 'utf-8'))
+  } catch {
+    return JSON.parse(readFileSync(PORTFOLIO_SEED_PATH, 'utf-8'))
+  }
 }
 
 export async function writePortfolio(data: any): Promise<void> {
