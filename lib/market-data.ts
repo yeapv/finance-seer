@@ -1,7 +1,8 @@
 /**
  * Get live stock data from MKTS.io (primary) → Finnhub (fallback)
  * MKTS.io API: https://mkts.io/developers
- *
+ * Deployed: 2026-04-15 22:36 UTC - Force cache bust
+ * 
  * MKTS.io provides:
  *   - Real-time quotes (price, OHLC, volume) via /asset/{symbol}
  *   - Fundamentals via /asset/{symbol}/details
