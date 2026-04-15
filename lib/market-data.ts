@@ -63,9 +63,9 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
       if (res.ok) {
         const json = await res.json()
         if (json.success && json.data) {
-          const d = json.data
-          const price = d.price || 0
-          const change24h = d.change24h || 0
+          const snapshotData = json.data
+          const price = snapshotData.price || 0
+          const change24h = snapshotData.change24h || 0
         
           console.log(`[MKTS.io] Retrieved ${ticker} snapshot: $${price.toFixed(2)}, ${change24h}%`)
           
@@ -79,9 +79,7 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
               const detailsJson = await detailsRes.json()
               if (detailsJson.success && detailsJson.data) {
                 details = detailsJson.data
-                // Merge details into response - Fix: Complete data merge (deployed 2026-04-15)
-                d = { ...d, ...details }
-              }
+              }}
             }
           } catch (e) {
             console.log(`[MKTS.io] Details fetch failed for ${ticker}:`, e)
@@ -89,26 +87,26 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
 
           return {
             ticker: ticker.toUpperCase(),
-            name: d.name || ticker.toUpperCase(),
+            name: snapshotData.name || details?.name || ticker.toUpperCase(),
             price: price,
             change: change24h,
             changePercent: change24h,
-            volume: d.volume24h || d.volume || 0,
-            marketCap: d.marketCap || 0,
-            peRatio: d.trailingPE || 0,
-            dividendYield: d.dividendYield || 0,
-            dayHigh: d.h || price,
-            dayLow: d.l || price,
-            open: d.o || price,
+            volume: snapshotData.volume24h || snapshotData.volume || details?.volume || 0,
+            marketCap: snapshotData.marketCap || details?.marketCap || 0,
+            peRatio: details?.trailingPE || 0,
+            dividendYield: details?.dividendYield || 0,
+            dayHigh: snapshotData.h || details?.h || price,
+            dayLow: snapshotData.l || details?.l || price,
+            open: snapshotData.o || details?.o || price,
             previousClose: price - change24h,
-            week52High: d.fiftyTwoWeekHigh || 0,
-            week52Low: d.fiftyTwoWeekLow || 0,
-            currency: 'USD',
-            exchange: '',
-            sector: d.sector || undefined,
-            industry: d.industry || undefined,
-            recommendation: d.recommendationKey,
-            targetPrice: d.targetPrice,
+            week52High: details?.fiftyTwoWeekHigh || 0,
+            week52Low: details?.fiftyTwoWeekLow || 0,
+            currency: snapshotData.currency || 'USD',
+            exchange: snapshotData.exchange || '',
+            sector: snapshotData.sector || details?.sector || undefined,
+            industry: details?.industry || undefined,
+            recommendation: details?.recommendationKey,
+            targetPrice: details?.targetPrice,
           }
         }
       }
