@@ -91,29 +91,33 @@ async function main() {
     const { total, passed, failed, unitPassed, unitTotal, intPassed, intTotal } = getTestResults();
     
     // Determine status
-    const isPassing = failed === 0;
+    const deployResult = process.env.DEPLOYMENT_RESULT || 'failure';
+    const isPassing = failed === 0 && deployResult === 'success';
     const statusEmoji = isPassing ? '✅' : '❌';
-    const statusText = isPassing ? '**ALL TESTS PASSED**' : '**TESTS FAILED - Review needed**';
-    const warning = !isPassing ? '\n⚠️ *Deployment blocked due to test failures*' : '';
-    
+    const statusText = isPassing ? 'ALL TESTS PASSED' : 'TESTS FAILED \u2014 Deployment blocked';
+    const deployLine = isPassing
+      ? '🚀 *Deployed to production*'
+      : '🚫 *Deployment blocked \u2014 fix tests first*';
+
     // Get timestamp
     const now = new Date();
     const timestamp = now.toISOString();
-    
+
     // Build message
-    const unitLine = unitTotal  > 0 ? `\n  • Unit:        ${unitPassed}/${unitTotal}`  : '';
-    const intLine  = intTotal   > 0 ? `\n  • Integration: ${intPassed}/${intTotal}`  : '';
+    const unitLine = unitTotal  > 0 ? `\n  • Unit:        ${unitPassed}/${unitTotal}` : '';
+    const intLine  = intTotal   > 0 ? `\n  • Integration: ${intPassed}/${intTotal}` : '';
     const message = `
 🤖 *Finance Seer CI/CD Status*
 
 📦 *Build:* ${REPO_NAME}
-🔗 *Commit:* ${COMMIT_HASH}
+🔗 *Commit:* \`${COMMIT_HASH.substring(0, 7)}\`
 📅 *Time:* ${timestamp}
 
 ${statusEmoji} *${statusText}*
 🧪 *Tests:* ${passed}/${total} passing${failed > 0 ? ` (${failed} failed)` : ''}${unitLine}${intLine}
 
-🔍 *View Results:* ${SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}${warning}
+${deployLine}
+🔍 *View Logs:* ${SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}
     `.trim();
 
     // Send to Telegram
