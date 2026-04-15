@@ -56,5 +56,7 @@ backup/
 # OpenClaw workspace files
 .openclaw/
 
-# Portfolio data — stored in Upstash KV, not git
+
+# Live portfolio data (runtime) — stored in KV, not git
 data/portfolio.json
+# portfolio.seed.json IS tracked (schema reference + dev default)
