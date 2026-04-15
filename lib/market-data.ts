@@ -1,7 +1,7 @@
 /**
- * Market Data — MKTS.io as primary source (with Yahoo Finance fallback)
+ * Get live stock data from MKTS.io (primary) → Finnhub (fallback)
  * MKTS.io API: https://mkts.io/developers
- * 
+ *
  * MKTS.io provides:
  *   - Real-time quotes (price, OHLC, volume) via /asset/{symbol}
  *   - Fundamentals via /asset/{symbol}/details
@@ -48,7 +48,7 @@ export interface StockData {
 }
 
 /**
- * Get live stock data from MKTS.io (primary) or Yahoo Finance (fallback)
+ * Get live stock data from MKTS.io (primary) → Finnhub (fallback)
  * MKTS.io endpoint: GET /api/v1/asset/{symbol}
  */
 export async function getLiveQuote(ticker: string): Promise<StockData | null> {
@@ -65,7 +65,7 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
           const d = json.data
           const price = d.price || 0
           const change24h = d.change24h || 0
-          
+        
           console.log(`[MKTS.io] Retrieved ${ticker} snapshot: $${price.toFixed(2)}, ${change24h}%`)
           
           // Now fetch additional details from /details endpoint
@@ -110,66 +110,65 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
         }
       }
       
-      console.log(`[MKTS.io] No data for ${ticker}, trying Yahoo Finance fallback`)
+      console.log(`[MKTS.io] No data for ${ticker}, trying Finnhub fallback`)
     } catch (error) {
       console.log(`[MKTS.io] Error for ${ticker}:`, error.message)
     }
   }
 
-  // Fallback to Yahoo Finance
-  return await getYahooQuote(ticker)
+  // Fallback to Finnhub (your existing API)
+  return await getFinnhubQuote(ticker)
 }
 
 /**
- * Get stock data from Yahoo Finance (fallback)
+ * Get stock data from Finnhub (fallback)
  */
-async function getYahooQuote(ticker: string): Promise<StockData | null> {
+async function getFinnhubQuote(ticker: string): Promise<StockData | null> {
+  if (!FINNHUB_KEY) {
+    console.log('[Finnhub] No API key configured, cannot fetch data')
+    return null
+  }
+
   try {
-    const [chartRes, quoteRes] = await Promise.allSettled([
-      fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${ticker.toUpperCase()}?interval=1d&range=5d`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-      }),
-      fetch(`https://query2.finance.yahoo.com/v6/finance/quote?symbols=${ticker.toUpperCase()}`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-      })
+    const [quoteRes, chartRes] = await Promise.allSettled([
+      fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${FINNHUB_KEY}`),
+      fetch(`https://finnhub.io/api/v1/company-profile2?symbol=${ticker.toUpperCase()}&token=${FINNHUB_KEY}`)
     ])
 
-    const chartData = chartRes.status === 'fulfilled' && chartRes.value.ok ? await chartRes.value.json() : null
     const quoteData = quoteRes.status === 'fulfilled' && quoteRes.value.ok ? await quoteRes.value.json() : null
+    const profileData = chartRes.status === 'fulfilled' && chartRes.value.ok ? await chartRes.value.json() : null
 
-    const meta = chartData?.chart?.result?.[0]?.meta
-    const q = quoteData?.quoteResponse?.result?.[0]
+    if (!quoteData?.c || quoteData.c === 0) return null
 
-    if (!meta?.regularMarketPrice) return null
-
-    const price = meta.regularMarketPrice
-    const prevClose = meta.previousClose || meta.chartPreviousClose || price
+    const price = quoteData.c
+    const prevClose = quoteData.o - quoteData.d
+    const change = quoteData.d
 
     return {
       ticker: ticker.toUpperCase(),
-      name: q?.shortName || meta.symbol || ticker.toUpperCase(),
+      name: profileData?.Name || ticker.toUpperCase(),
       price: price,
-      change: price - prevClose,
-      changePercent: prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0,
-      volume: q?.regularMarketVolume || meta.volume || 0,
-      marketCap: q?.marketCap || 0,
-      peRatio: q?.trailingPE || 0,
-      dividendYield: q?.dividendYield || 0,
-      dayHigh: q?.dayHigh || meta.fiftyTwoWeekHigh || price,
-      dayLow: q?.dayLow || meta.fiftyTwoWeekLow || price,
-      open: q?.regularMarketOpen || price,
+      change: change,
+      changePercent: prevClose > 0 ? (change / prevClose) * 100 : 0,
+      volume: quoteData?.v || 0,
+      marketCap: 0, // Not available in Finnhub quote API
+      peRatio: 0, // Not available in quote API
+      dividendYield: 0, // Not available in quote API
+      dayHigh: quoteData?.h || price,
+      dayLow: quoteData?.l || price,
+      open: quoteData?.o || price,
       previousClose: prevClose,
-      week52High: meta.fiftyTwoWeekHigh || 0,
-      week52Low: meta.fiftyTwoWeekLow || 0,
-      currency: meta.currency || 'USD',
-      exchange: q?.exchangeName || '',
-      sector: q?.sector || undefined,
-      industry: q?.industry || undefined,
+      week52High: profileData?.FiftyTwoWeekHigh || 0,
+      week52Low: profileData?.FiftyTwoWeekLow || 0,
+      currency: profileData?.Currency || 'USD',
+      exchange: profileData?.StockExchange || '',
+      sector: undefined,
+      industry: undefined,
       recommendation: undefined,
       targetPrice: undefined,
     }
   } catch (error) {
-    console.error(`Yahoo Finance quote fetch failed for ${ticker}:`, error)
+    console.error(`Finnhub quote fetch failed for ${ticker}:`, error)
     return null
   }
 }
@@ -179,7 +178,7 @@ async function getYahooQuote(ticker: string): Promise<StockData | null> {
  */
 export async function getFundamentals(ticker: string) {
   if (!MKTS_API_KEY) return null
-  
+
   try {
     const res = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/details`, {
       headers: { 'X-API-Key': MKTS_API_KEY }
