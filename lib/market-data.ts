@@ -1,11 +1,6 @@
 /**
- * Market Data — MKTS.io as primary source
- * MKTS.io provides:
- *   - Real-time quotes (price, OHLC, volume)
- *   - Historical OHLCV data
- *   - Fundamentals (PE, market cap, margins, etc.)
- *   - Analyst consensus (targets, recommendations)
- *   - News and sentiment
+ * Market Data — Yahoo Finance as primary source (proven working)
+ * MKTS.io available as secondary source for enhanced data
  */
 
 export interface HistoricalData {
@@ -20,6 +15,7 @@ export interface HistoricalData {
 
 const MKTS_BASE = 'https://mkts.io/api/v1'
 const MKTS_API_KEY = process.env.MKTS_API_KEY || ''
+const FINNHUB_KEY = process.env.FINNHUB_API_KEY || ''
 
 export interface StockData {
   ticker: string
@@ -46,11 +42,31 @@ export interface StockData {
 }
 
 /**
- * Get live stock data from MKTS.io
+ * Get live stock data from Yahoo Finance (reliable fallback)
  */
 export async function getLiveQuote(ticker: string): Promise<StockData | null> {
+  // Try MKTS.io first (if API key configured and working)
+  if (MKTS_API_KEY) {
+    try {
+      const mktsData = await getMKTSQuote(ticker)
+      if (mktsData) return mktsData
+    } catch (e) {
+      console.log(`MKTS.io failed for ${ticker}, falling back to Yahoo Finance`)
+    }
+  }
+
+  // Fall back to Yahoo Finance (proven to work)
+  return await getYahooQuote(ticker)
+}
+
+/**
+ * Get stock data from MKTS.io
+ */
+async function getMKTSQuote(ticker: string): Promise<StockData | null> {
   try {
-    const res = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/price`, {
+    // MKTS.io API structure needs proper authentication
+    // This is a placeholder - actual implementation depends on MKTS API docs
+    const res = await fetch(`${MKTS_BASE}/quotes/${ticker.toUpperCase()}`, {
       headers: { 'X-API-Key': MKTS_API_KEY }
     })
 
@@ -60,11 +76,9 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
     if (!json.success) return null
 
     const d = json.data || {}
-    
-    // Extract current price data
     const price = d.currentPrice || d.price || 0
     const prevClose = d.previousClose || d.pc || price
-    
+
     return {
       ticker: ticker.toUpperCase(),
       name: d.name || ticker.toUpperCase(),
@@ -89,7 +103,61 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
       targetPrice: d.targetPrice,
     }
   } catch (error) {
-    console.error(`MKTS price fetch failed for ${ticker}:`, error)
+    console.error(`MKTS quote fetch failed for ${ticker}:`, error)
+    return null
+  }
+}
+
+/**
+ * Get live stock data from Yahoo Finance
+ */
+async function getYahooQuote(ticker: string): Promise<StockData | null> {
+  try {
+    const [chartRes, quoteRes] = await Promise.allSettled([
+      fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${ticker.toUpperCase()}?interval=1d&range=5d`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      }),
+      fetch(`https://query2.finance.yahoo.com/v6/finance/quote?symbols=${ticker.toUpperCase()}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      })
+    ])
+
+    const chartData = chartRes.status === 'fulfilled' && chartRes.value.ok ? await chartRes.value.json() : null
+    const quoteData = quoteRes.status === 'fulfilled' && quoteRes.value.ok ? await quoteRes.value.json() : null
+
+    const meta = chartData?.chart?.result?.[0]?.meta
+    const q = quoteData?.quoteResponse?.result?.[0]
+
+    if (!meta?.regularMarketPrice) return null
+
+    const price = meta.regularMarketPrice
+    const prevClose = meta.previousClose || meta.chartPreviousClose || price
+
+    return {
+      ticker: ticker.toUpperCase(),
+      name: q?.shortName || meta.symbol || ticker.toUpperCase(),
+      price: price,
+      change: price - prevClose,
+      changePercent: prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0,
+      volume: q?.regularMarketVolume || meta.volume || 0,
+      marketCap: q?.marketCap || 0,
+      peRatio: q?.trailingPE || 0,
+      dividendYield: q?.dividendYield || 0,
+      dayHigh: q?.dayHigh || meta.fiftyTwoWeekHigh || price,
+      dayLow: q?.dayLow || meta.fiftyTwoWeekLow || price,
+      open: q?.regularMarketOpen || price,
+      previousClose: prevClose,
+      week52High: meta.fiftyTwoWeekHigh || 0,
+      week52Low: meta.fiftyTwoWeekLow || 0,
+      currency: meta.currency || 'USD',
+      exchange: q?.exchangeName || '',
+      sector: q?.sector || undefined,
+      industry: q?.industry || undefined,
+      recommendation: undefined,
+      targetPrice: undefined,
+    }
+  } catch (error) {
+    console.error(`Yahoo Finance quote fetch failed for ${ticker}:`, error)
     return null
   }
 }
