@@ -99,8 +99,8 @@ async function getYahooQuote(ticker: string) {
   } catch { return null }
 }
 
-export async function getLiveQuote(ticker: string) {
-  // Cache disabled — always fetch fresh
+export async function getLiveQuote(ticker: string, forceFresh: boolean = false) {
+  // Skip cache if forceFresh is true or cache is disabled
   // const cached = quoteCache.get(ticker)
   // if (cached && Date.now() - cached.ts < QUOTE_TTL) return cached.data
 
@@ -124,13 +124,17 @@ export async function getLiveQuote(ticker: string) {
   ])
 
   // Finnhub returned no price — fall back to Yahoo
-  if (!q.c) return getYahooQuote(ticker)
+  if (!q.c) {
+    console.log(`No price from Finnhub for ${ticker}, using Yahoo fallback`)
+    return getYahooQuote(ticker)
+  }
+  
   const metrics = m?.metric || {}
 
   const data = {
     ticker,
     name: p.name || ticker,
-    price: q.c,
+    price: q.c, // q.c is the current price from Finnhub
     change: q.c - q.pc,
     changePercent: q.pc > 0 ? ((q.c - q.pc) / q.pc) * 100 : 0,
     volume: q.v ?? 0,

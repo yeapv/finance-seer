@@ -61,23 +61,27 @@ export function StockChart({ data, indicators, showIndicators, onToggleIndicator
       rightPriceScale: { visible: true, borderColor: '#222', minimumWidth: isMobile ? 50 : 65 },
       crosshair: { mode: 1 as const, vertLine: { color: '#333' }, horzLine: { color: '#333' } },
       grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } },
-      handleScroll: false,
-      handleScale: false,
+      // Allow page scroll while preventing chart zoom/pan
+      handleScroll: { vertical: false, horizontal: true },
+      handleScale: { horizontal: false, vertical: false, center: false },
     })
 
-    // Prevent wheel/touch from hijacking page scroll
-    const preventWheelZoom = (e: WheelEvent) => {
+    // Prevent wheel/touch from hijacking page scroll but allow chart panning
+    const preventZoom = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) e.preventDefault()
     }
-    const preventTouchHijack = (e: TouchEvent) => {
-      if (e.touches.length === 1) e.stopPropagation()
+    const preventTouchScrollHijack = (e: TouchEvent) => {
+      // Only prevent if it's the main chart container touching
+      if (e.touches.length === 1 && e.target === e.currentTarget) {
+        e.preventDefault()
+      }
     }
 
     const chartContainers = [priceRef, volumeRef, rsiRef, macdRef]
     chartContainers.forEach(ref => {
       if (ref.current) {
-        ref.current.addEventListener('wheel', preventWheelZoom, { passive: false })
-        ref.current.addEventListener('touchmove', preventTouchHijack, { passive: true })
+        ref.current.addEventListener('wheel', preventZoom, { passive: true })
+        ref.current.addEventListener('touchmove', preventTouchScrollHijack, { passive: false })
         ref.current.style.touchAction = 'pan-x'
       }
     })
@@ -271,6 +275,13 @@ export function StockChart({ data, indicators, showIndicators, onToggleIndicator
         }
       })
       charts.forEach(c => c.remove())
+      // Clean up scroll event listeners
+      chartContainers.forEach(ref => {
+        if (ref.current) {
+          ref.current.removeEventListener('wheel', preventZoom)
+          ref.current.removeEventListener('touchmove', preventTouchScrollHijack)
+        }
+      })
     }
   }, [data, indicators, showIndicators, showVolume, showRSI, showMACD])
 

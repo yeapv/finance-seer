@@ -9,7 +9,7 @@ export const fetchCache = 'no-cache'
 export const runtime = 'edge'
 
 export async function GET(req: NextRequest, { params }: { params: { ticker: string } }) {
-  // Add cache-busting headers to response
+  // Add aggressive cache-busting headers for real-time data
   const headers = {
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     'Surrogate-Control': 'no-store',
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: { ticker: stri
 
   try {
     const ticker = (params.ticker as string).toUpperCase()
-    const data = await getLiveQuote(ticker)
+    const data = await getLiveQuote(ticker, true) // Force fresh data
     if (!data) return NextResponse.json({ error: 'Stock not found' }, { status: 404, headers })
 
     // Finnhub free tier doesn't return volume — get it from last candle
@@ -32,6 +32,7 @@ export async function GET(req: NextRequest, { params }: { params: { ticker: stri
 
     return NextResponse.json(data, { headers })
   } catch (error) {
+    console.error('Stock fetch failed:', error)
     return NextResponse.json({ error: 'Failed to fetch stock data' }, { status: 500, headers })
   }
 }
