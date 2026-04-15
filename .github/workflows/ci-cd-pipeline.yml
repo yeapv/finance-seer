@@ -10,10 +10,6 @@ env:
   NODE_VERSION: '22'
   PYTHON_VERSION: '3.12'
 
-# Force Node.js 24 for future-proofing
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 jobs:
   # ====== PHASE 1: DEPENDENCIES & LINTING ======
   dependencies-and-lint:
