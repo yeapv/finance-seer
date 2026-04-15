@@ -78,6 +78,8 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
               const detailsJson = await detailsRes.json()
               if (detailsJson.success && detailsJson.data) {
                 details = detailsJson.data
+                // Merge details into response
+                d = { ...d, ...details }
               }
             }
           } catch (e) {
@@ -92,20 +94,20 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
             changePercent: change24h,
             volume: d.volume24h || d.volume || 0,
             marketCap: d.marketCap || 0,
-            peRatio: details?.trailingPE || 0,
-            dividendYield: details?.dividendYield || 0,
-            dayHigh: 0, // Need intraday data
-            dayLow: 0, // Need intraday data
-            open: 0, // Need intraday data
+            peRatio: d.trailingPE || 0,
+            dividendYield: d.dividendYield || 0,
+            dayHigh: d.h || price,
+            dayLow: d.l || price,
+            open: d.o || price,
             previousClose: price - change24h,
-            week52High: details?.fiftyTwoWeekHigh || 0,
-            week52Low: details?.fiftyTwoWeekLow || 0,
+            week52High: d.fiftyTwoWeekHigh || 0,
+            week52Low: d.fiftyTwoWeekLow || 0,
             currency: 'USD',
             exchange: '',
             sector: d.sector || undefined,
-            industry: undefined,
-            recommendation: details?.recommendationKey,
-            targetPrice: details?.targetPrice,
+            industry: d.industry || undefined,
+            recommendation: d.recommendationKey,
+            targetPrice: d.targetPrice,
           }
         }
       }
