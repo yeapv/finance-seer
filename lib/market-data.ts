@@ -1,6 +1,12 @@
 /**
- * Market Data — Yahoo Finance as primary source (proven working)
- * MKTS.io available as secondary source for enhanced data
+ * Market Data — MKTS.io as primary source (with Yahoo Finance fallback)
+ * MKTS.io API: https://mkts.io/developers
+ * 
+ * MKTS.io provides:
+ *   - Real-time quotes (price, OHLC, volume) via /asset/{symbol}
+ *   - Fundamentals via /asset/{symbol}/details
+ *   - Historical OHLCV data
+ *   - Analyst consensus (targets, recommendations)
  */
 
 export interface HistoricalData {
@@ -42,74 +48,80 @@ export interface StockData {
 }
 
 /**
- * Get live stock data from Yahoo Finance (reliable fallback)
+ * Get live stock data from MKTS.io (primary) or Yahoo Finance (fallback)
+ * MKTS.io endpoint: GET /api/v1/asset/{symbol}
  */
 export async function getLiveQuote(ticker: string): Promise<StockData | null> {
-  // Try MKTS.io first (if API key configured and working)
+  // Try MKTS.io first (if API key configured)
   if (MKTS_API_KEY) {
     try {
-      const mktsData = await getMKTSQuote(ticker)
-      if (mktsData) return mktsData
-    } catch (e) {
-      console.log(`MKTS.io failed for ${ticker}, falling back to Yahoo Finance`)
+      const res = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}`, {
+        headers: { 'X-API-Key': MKTS_API_KEY }
+      })
+
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && json.data) {
+          const d = json.data
+          const price = d.price || 0
+          const change24h = d.change24h || 0
+          
+          console.log(`[MKTS.io] Retrieved ${ticker} snapshot: $${price.toFixed(2)}, ${change24h}%`)
+          
+          // Now fetch additional details from /details endpoint
+          let details = null
+          try {
+            const detailsRes = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/details`, {
+              headers: { 'X-API-Key': MKTS_API_KEY }
+            })
+            if (detailsRes.ok) {
+              const detailsJson = await detailsRes.json()
+              if (detailsJson.success && detailsJson.data) {
+                details = detailsJson.data
+              }
+            }
+          } catch (e) {
+            console.log(`[MKTS.io] Details fetch failed for ${ticker}:`, e)
+          }
+
+          return {
+            ticker: ticker.toUpperCase(),
+            name: d.name || ticker.toUpperCase(),
+            price: price,
+            change: change24h,
+            changePercent: change24h,
+            volume: d.volume24h || d.volume || 0,
+            marketCap: d.marketCap || 0,
+            peRatio: details?.trailingPE || 0,
+            dividendYield: details?.dividendYield || 0,
+            dayHigh: 0, // Need intraday data
+            dayLow: 0, // Need intraday data
+            open: 0, // Need intraday data
+            previousClose: price - change24h,
+            week52High: details?.fiftyTwoWeekHigh || 0,
+            week52Low: details?.fiftyTwoWeekLow || 0,
+            currency: 'USD',
+            exchange: '',
+            sector: d.sector || undefined,
+            industry: undefined,
+            recommendation: details?.recommendationKey,
+            targetPrice: details?.targetPrice,
+          }
+        }
+      }
+      
+      console.log(`[MKTS.io] No data for ${ticker}, trying Yahoo Finance fallback`)
+    } catch (error) {
+      console.log(`[MKTS.io] Error for ${ticker}:`, error.message)
     }
   }
 
-  // Fall back to Yahoo Finance (proven to work)
+  // Fallback to Yahoo Finance
   return await getYahooQuote(ticker)
 }
 
 /**
- * Get stock data from MKTS.io
- */
-async function getMKTSQuote(ticker: string): Promise<StockData | null> {
-  try {
-    // MKTS.io API structure needs proper authentication
-    // This is a placeholder - actual implementation depends on MKTS API docs
-    const res = await fetch(`${MKTS_BASE}/quotes/${ticker.toUpperCase()}`, {
-      headers: { 'X-API-Key': MKTS_API_KEY }
-    })
-
-    if (!res.ok) return null
-
-    const json = await res.json()
-    if (!json.success) return null
-
-    const d = json.data || {}
-    const price = d.currentPrice || d.price || 0
-    const prevClose = d.previousClose || d.pc || price
-
-    return {
-      ticker: ticker.toUpperCase(),
-      name: d.name || ticker.toUpperCase(),
-      price: price,
-      change: price - prevClose,
-      changePercent: prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0,
-      volume: d.volume || d.avgVolume || 0,
-      marketCap: d.marketCap || d.marketCapRaw || 0,
-      peRatio: d.trailingPE || d.pe || 0,
-      dividendYield: d.dividendYield || d.dy || 0,
-      dayHigh: d.dayHigh || d.h || price,
-      dayLow: d.dayLow || d.l || price,
-      open: d.open || d.o || price,
-      previousClose: prevClose,
-      week52High: d.fiftyTwoWeekHigh || d.fiftyTwoWkHigh || 0,
-      week52Low: d.fiftyTwoWeekLow || d.fiftyTwoWkLow || 0,
-      currency: d.currency || 'USD',
-      exchange: d.exchange || '',
-      sector: d.sector,
-      industry: d.industry,
-      recommendation: d.recommendationKey,
-      targetPrice: d.targetPrice,
-    }
-  } catch (error) {
-    console.error(`MKTS quote fetch failed for ${ticker}:`, error)
-    return null
-  }
-}
-
-/**
- * Get live stock data from Yahoo Finance
+ * Get stock data from Yahoo Finance (fallback)
  */
 async function getYahooQuote(ticker: string): Promise<StockData | null> {
   try {
@@ -163,46 +175,11 @@ async function getYahooQuote(ticker: string): Promise<StockData | null> {
 }
 
 /**
- * Get historical OHLCV data from MKTS.io
- */
-export async function getHistoricalOHLCV(ticker: string, period: string): Promise<HistoricalData[]> {
-  try {
-    const res = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/history?period=${period}`, {
-      headers: { 'X-API-Key': MKTS_API_KEY }
-    })
-
-    if (!res.ok) return []
-
-    const json = await res.json()
-    if (!json.success) return []
-
-    const data = json.data || []
-    return data.map((item: any) => ({
-      date: new Date(item.date || item.timestamp),
-      open: item.open || item.O,
-      high: item.high || item.H,
-      low: item.low || item.L,
-      close: item.close || item.C,
-      volume: item.volume || item.V,
-      adjClose: item.adjClose || item.AC || item.close || item.C,
-    }))
-  } catch (error) {
-    console.error(`MKTS history fetch failed for ${ticker}:`, error)
-    return []
-  }
-}
-
-/**
- * Get fundamentals data from MKTS.io (cached for 1 hour)
+ * Get fundamentals data from MKTS.io /details endpoint
  */
 export async function getFundamentals(ticker: string) {
-  const cacheKey = `fundamentals:${ticker}`
-  const cached = cache.get(cacheKey)
+  if (!MKTS_API_KEY) return null
   
-  if (cached && Date.now() - cached.ts < 60 * 60 * 1000) {
-    return cached.data
-  }
-
   try {
     const res = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/details`, {
       headers: { 'X-API-Key': MKTS_API_KEY }
@@ -243,87 +220,11 @@ export async function getFundamentals(ticker: string) {
       recommendationTrend: d.recommendationTrend?.slice(0, 4) || [],
     }
 
-    cache.set(cacheKey, { data: result, ts: Date.now() })
     return result
   } catch (error) {
     console.error(`MKTS fundamentals fetch failed for ${ticker}:`, error)
     return null
   }
-}
-
-/**
- * Search stocks by name or ticker
- */
-export async function searchStocks(query: string) {
-  try {
-    const res = await fetch(`${MKTS_BASE}/search?q=${encodeURIComponent(query)}`, {
-      headers: { 'X-API-Key': MKTS_API_KEY }
-    })
-
-    if (!res.ok) return []
-
-    const json = await res.json()
-    if (!json.success) return []
-
-    return (json.data || []).slice(0, 10).map((item: any) => ({
-      symbol: item.symbol,
-      name: item.name,
-      exchange: item.exchange,
-      type: item.type,
-    }))
-  } catch (error) {
-    console.error(`MKTS search failed for ${query}:`, error)
-    return []
-  }
-}
-
-/**
- * Get news for a stock
- */
-export async function getStockNews(ticker: string) {
-  try {
-    const res = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/news`, {
-      headers: { 'X-API-Key': MKTS_API_KEY }
-    })
-
-    if (!res.ok) return []
-
-    const json = await res.json()
-    if (!json.success) return []
-
-    return (json.data || []).slice(0, 10)
-  } catch (error) {
-    console.error(`MKTS news fetch failed for ${ticker}:`, error)
-    return []
-  }
-}
-
-/**
- * Get intraday OHLCV data from MKTS.io (last complete trading day)
- */
-export async function getIntradayOHLCV(ticker: string): Promise<any[]> {
-  try {
-    const res = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/intraday`, {
-      headers: { 'X-API-Key': MKTS_API_KEY }
-    })
-
-    if (!res.ok) return []
-
-    const json = await res.json()
-    if (!json.success) return []
-
-    return (json.data || [])
-  } catch (error) {
-    console.error(`MKTS intraday fetch failed for ${ticker}:`, error)
-    return []
-  }
-}
-
-/**
- * Get news for a stock (alias for getStockNews for backwards compatibility)
- */
-export async function getNews(ticker: string) {
-  return getStockNews(ticker)
 }
 
 // Simple cache for fundamentals
