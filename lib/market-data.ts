@@ -78,7 +78,7 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
               const detailsJson = await detailsRes.json()
               if (detailsJson.success && detailsJson.data) {
                 details = detailsJson.data
-                // Merge details into response
+                // Merge details into response - Fix: Complete data merge (deployed 2026-04-15)
                 d = { ...d, ...details }
               }
             }
