@@ -79,7 +79,7 @@ export async function getLiveQuote(ticker: string): Promise<StockData | null> {
               const detailsJson = await detailsRes.json()
               if (detailsJson.success && detailsJson.data) {
                 details = detailsJson.data
-              }}
+              }
             }
           } catch (e) {
             console.log(`[MKTS.io] Details fetch failed for ${ticker}:`, e)
