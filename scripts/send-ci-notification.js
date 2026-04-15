@@ -11,7 +11,9 @@ const https = require('https');
 // Configuration
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-const REPO_NAME = process.env.GITHUB_REPOSITORY || 'finance-seer';
+// GITHUB_REPOSITORY is 'owner/repo' — use it directly for URLs, strip owner for display
+const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY || 'yeapvin/finance-seer';
+const REPO_NAME = GITHUB_REPOSITORY.split('/').pop() || 'finance-seer'; // display name only
 const COMMIT_HASH = process.env.GITHUB_SHA || 'unknown';
 const RUN_ID = process.env.GITHUB_RUN_ID || 'unknown';
 const SERVER_URL = process.env.GITHUB_SERVER_URL || 'https://github.com';
@@ -127,7 +129,7 @@ async function main() {
 ${statusEmoji} *${statusText}*
 🧪 *Tests:* ${passed}/${total} passing${failed > 0 ? ` (${failed} failed)` : ''}
 
-🔍 *View Results:* ${SERVER_URL}/${REPO_OWNER}/${REPO_NAME}/actions/runs/${RUN_ID}
+🔍 *View Results:* ${SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}
 
 ${warning}
     `.trim();
