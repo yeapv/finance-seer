@@ -840,4 +840,8 @@ def main():
     log('Monitor run complete')
 
 if __name__ == '__main__':
-    main()
+    # Continuous monitoring loop
+    # Runs every 10 minutes during NYSE hours
+    while True:
+        main()
+        time.sleep(600)  # 10 minutes
