@@ -3,7 +3,7 @@
   "startingCapital": 818735.51,
   "baseCurrency": "USD",
   "cashByValue": {
-    "USD": 818301.54
+    "USD": 818301.57
   },
   "positions": [],
   "history": [
@@ -202,7 +202,7 @@
     },
     {
       "date": "2026-04-16",
-      "value": 818331.87
+      "value": 818331.9
     }
   ],
   "atrMultipliers": {
@@ -312,14 +312,14 @@
   ],
   "note": "Reset 2026-04-08: matched to IBKR paper account DU7992310 NLV (SGD 1,042,178 @ 0.7854 = USD 818,527)",
   "ibkrNLV": {
-    "sgd": 1041930.06,
-    "usd": 818331.87,
+    "sgd": 1041930.1,
+    "usd": 818331.9,
     "rate": 0.7854,
-    "syncedAt": "2026-04-15T19:02:40.767947Z"
+    "syncedAt": "2026-04-15T19:12:48.299149Z"
   },
   "pendingTrades": {},
   "tradeHistory": [],
   "lastUpdated": "2026-04-08T18:34:12.862164+00:00",
-  "totalValue": 818301.54,
+  "totalValue": 818301.57,
   "openOrders": []
 }
