@@ -62,8 +62,8 @@ export function StockChart({ data, indicators, showIndicators, onToggleIndicator
       crosshair: { mode: 1 as const, vertLine: { color: '#333' }, horzLine: { color: '#333' } },
       grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } },
       // Allow page scroll while preventing chart zoom/pan
-      handleScroll: { vertical: false, horizontal: true },
-      handleScale: { horizontal: false, vertical: false, center: false },
+      handleScroll: true,
+      handleScale: true,
     })
 
     // Prevent wheel/touch from hijacking page scroll but allow chart panning
@@ -267,14 +267,6 @@ export function StockChart({ data, indicators, showIndicators, onToggleIndicator
 
     return () => {
       window.removeEventListener('resize', handleResize)
-      // Clean up wheel event listeners
-      chartContainers.forEach(ref => {
-        if (ref.current) {
-          ref.current.removeEventListener('wheel', preventWheelZoom)
-          ref.current.removeEventListener('touchmove', preventTouchHijack)
-        }
-      })
-      charts.forEach(c => c.remove())
       // Clean up scroll event listeners
       chartContainers.forEach(ref => {
         if (ref.current) {
@@ -282,6 +274,7 @@ export function StockChart({ data, indicators, showIndicators, onToggleIndicator
           ref.current.removeEventListener('touchmove', preventTouchScrollHijack)
         }
       })
+      charts.forEach(c => c.remove())
     }
   }, [data, indicators, showIndicators, showVolume, showRSI, showMACD])
 

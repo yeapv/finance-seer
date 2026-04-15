@@ -8,7 +8,15 @@
  *   - News and sentiment
  */
 
-import { HistoricalData } from './indicators'
+export interface HistoricalData {
+  date: Date
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
+  adjClose: number
+}
 
 const MKTS_BASE = 'https://mkts.io/api/v1'
 const MKTS_API_KEY = process.env.MKTS_API_KEY || ''
@@ -220,6 +228,34 @@ export async function getStockNews(ticker: string) {
     console.error(`MKTS news fetch failed for ${ticker}:`, error)
     return []
   }
+}
+
+/**
+ * Get intraday OHLCV data from MKTS.io (last complete trading day)
+ */
+export async function getIntradayOHLCV(ticker: string): Promise<any[]> {
+  try {
+    const res = await fetch(`${MKTS_BASE}/asset/${ticker.toUpperCase()}/intraday`, {
+      headers: { 'X-API-Key': MKTS_API_KEY }
+    })
+
+    if (!res.ok) return []
+
+    const json = await res.json()
+    if (!json.success) return []
+
+    return (json.data || [])
+  } catch (error) {
+    console.error(`MKTS intraday fetch failed for ${ticker}:`, error)
+    return []
+  }
+}
+
+/**
+ * Get news for a stock (alias for getStockNews for backwards compatibility)
+ */
+export async function getNews(ticker: string) {
+  return getStockNews(ticker)
 }
 
 // Simple cache for fundamentals
