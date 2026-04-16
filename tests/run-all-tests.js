@@ -42,6 +42,11 @@ function assertNumber(val, message) {
 console.log('\n🧪 Finance Seer Test Suite\n');
 console.log('Running 141 tests...\n');
 
+// ===== DELIBERATE FAILURE TEST (CI gate validation) =====
+test('[CI-TEST] Intentional failure to validate gate', () => {
+  throw new Error('This failure is intentional — testing CI gate. Remove after verification.');
+});
+
 // ===== SECTION 1: Trading Safety Tests (37 tests) =====
 console.log('\n📋 Section 1: Trading Safety Tests');
 
