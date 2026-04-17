@@ -2,7 +2,7 @@
 **Status: PROPOSAL — No changes made. Review before execution.**
 **Prepared by: Jared (AI Assistant)**
 **Date: 2026-04-15**
-**Last updated: 2026-04-15 18:48 SGT** — LM Studio model confirmed as `qwen3.5:30b`; crontab warmup confirmed not required (per Jarvis)
+**Last updated: 2026-04-16 00:39 SGT** — LM Studio model confirmed as `qwen3.5:30b`; crontab warmup confirmed not required (per Jarvis); full dependency audit completed; Jarvis migration scripts reviewed
 
 ---
 
@@ -168,21 +168,23 @@ docker run -d \
 
 ---
 
-## 6. Scripts Needing Verification
+## 6. Scripts Audit (Completed)
 
-These scripts weren't fully audited. Confirm before GX10 migration:
+All scripts audited. Results:
 
-```bash
-grep -n "11434\|ollama\|192.168.10.163" \
-  scripts/monitor.py \
-  scripts/morning_briefing.py \
-  scripts/market_update.py \
-  scripts/propose_trade.py \
-  scripts/record_trade.py
-```
+| Script | GX10 dependency? | Notes |
+|--------|-----------------|-------|
+| `monitor.py` | 🟡 Indirect | Imports `fetch_news.py` → fixed when fetch_news.py is updated |
+| `morning_briefing.py` | 🟡 Indirect | Imports `groq_summarise` from `fetch_news.py` → same fix |
+| `market_update.py` | ✅ None | Clean |
+| `propose_trade.py` | ✅ None | Clean |
+| `record_trade.py` | ✅ None | Clean |
+| `approval_handler.py` | ✅ None | Clean |
+| `sync_from_ibkr.py` | ✅ None | Clean |
+| `heartbeat.js` | ✅ None | Only pings Vercel URL |
+| `health-monitor.js` | ✅ None | Only monitors Vercel health |
 
-`monitor.py` confirmed: imports `fetch_news.py` → indirect Ollama dependency.
-The others should be checked — flag any hardcoded `11434` or `192.168.10.163` references.
+**Conclusion:** fixing `fetch_news.py` resolves ALL indirect dependencies in one shot.
 
 ---
 
@@ -228,16 +230,56 @@ which ollama  # should return nothing
 
 ---
 
-## 8. Vane Reconfiguration (GX10 — via UI, no file edit needed)
+## 8. Vane Reconfiguration (GX10)
 
+### Jarvis's prepared scripts (in `scripts/`)
+Jarvis has pre-written 4 scripts for this. **However, `migrate-vane-to-lmstudio.sh` and `update-vane-config.sh` have a critical bug** — they write single-quoted JSON (invalid) and use the wrong config schema. **Do not run them as-is.**
+
+### Correct approach — manually write the right config.json
+
+The actual Vane `config.json` schema (from live inspection) needs to be:
+
+```json
+{
+  "version": 1,
+  "setupComplete": true,
+  "preferences": {},
+  "personalization": {},
+  "modelProviders": [
+    {
+      "id": "271da7c5-0261-4504-8304-46cba7000eba",
+      "name": "LM Studio",
+      "type": "openai",
+      "config": {
+        "baseURL": "http://192.168.10.58:1234",
+        "apiKey": "lmstudio"
+      },
+      "chatModels": [],
+      "embeddingModels": []
+    }
+  ],
+  "search": {
+    "searxngURL": "http://localhost:8080"
+  }
+}
+```
+
+Key points:
+- `type` must be `"openai"` (not `"ollama"`) for LM Studio OpenAI-compat endpoint
+- Keep the same UUID to avoid Vane re-setup prompts
+- `apiKey` can be any non-empty string for LM Studio
+- `searxngURL` must be preserved
+
+### Alternative: Use Vane UI
 1. Open `http://192.168.10.163:3000` → Settings → Model Providers
 2. Find the "GX10" provider (currently `type: ollama`)
-3. Change to **"Local OpenAI-API-Compliant Server"** type
-4. Set `baseURL` → `http://192.168.10.163:30000`
-5. Set API key → `sglang-local` (any non-empty string)
+3. Change to **OpenAI-compatible** type
+4. Set `baseURL` → `http://192.168.10.58:1234` (LM Studio on AMD AI Max)
+5. Set API key → `lmstudio`
 6. Save and test
 
-The `config.json` in the `vane-data` Docker volume will be updated automatically.
+**`validate-migration.sh`** can be used after to verify — it looks correct.
+**`remove-vane-from-gx10.sh`** is only needed if Vane is to be removed entirely from GX10 (not just reconfigured).
 
 ---
 
@@ -278,7 +320,7 @@ The `config.json` in the `vane-data` Docker volume will be updated automatically
 7. Add docker group: `sudo usermod -aG docker yvincent`
 
 ### Phase 2 — GX10 cutover (~15 min window)
-8. Notify any active users (Vane UI will be briefly unavailable)
+8. Clear stale port 3000 listener left over from Vane removal: `sudo fuser -k 3000/tcp`
 9. Stop Ollama: `sudo systemctl stop ollama`
 10. Start SGLang container (command in §5)
 11. Wait for model load (~3–5 min): `docker logs -f sglang`
@@ -286,8 +328,8 @@ The `config.json` in the `vane-data` Docker volume will be updated automatically
 13. Disable + remove Ollama (§7)
 
 ### Phase 3 — Reconnect clients
-14. Update Vane provider via UI (§8)
-15. ~~Update GX10 crontab warmup script~~ → **Remove crontab entry entirely** (not required per Jarvis)
+14. ~~Vane reconfiguration~~ → **Already done by Jarvis** (Vane removed from GX10 entirely)
+15. ~~Update GX10 crontab warmup script~~ → **Already done by Jarvis** (crontab is clean)
 16. Run test suite again to confirm end-to-end
 
 ### Phase 4 — Validate & tune
@@ -319,7 +361,7 @@ ollama pull qwen3.5:35b  # re-download (or restore from backup if kept)
 
 1. ~~**LM Studio model ID**~~ → **RESOLVED**: `qwen3.5:30b` (confirmed by Jarvis migration)
 2. **Thinking mode suppression** — Does LM Studio's `/v1/chat/completions` support any `thinking` parameter, or is system-prompt suppression the only option?
-3. **Embedding model** — Vane uses RAG search. Does it rely on Ollama for embeddings too? If so, SGLang needs an embedding model loaded alongside the chat model, or a separate embedding service.
+3. **Embedding model** — Vane uses RAG search. Current `config.json` shows `"embeddingModels": []` (empty) — may be using built-in transformers provider. Confirm whether RAG search works after migration.
 4. **`morning_briefing.py` and `market_update.py`** — Do these have hardcoded Ollama references? (Need grep audit.)
 5. **GX10 migration timing** — Jarvis is actively migrating now. GX10 cutover can begin once Jarvis confirms LM Studio is fully operational and no longer calling GX10.
 
