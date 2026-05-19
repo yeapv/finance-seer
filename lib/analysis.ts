@@ -184,10 +184,10 @@ function generateDataDrivenAnalysis(stock: StockData, rsi: number, macd: number,
   let recommendation: string
   let recReason: string
 
-  if (bullSignals >= bearSignals + 3) {
+  if (bullSignals >= bearSignals + 2) {
     recommendation = 'BUY'
     recReason = `Strong bullish conviction with ${bullSignals} bullish signals vs ${bearSignals} bearish. ${goldenCross ? 'Golden cross pattern confirms uptrend. ' : ''}${macdBullish ? 'MACD is above signal line showing momentum. ' : ''}${rsiOversold ? 'RSI indicates oversold conditions — a potential bounce opportunity. ' : rsiBullish ? 'RSI confirms bullish momentum without being overbought. ' : ''}Price is ${aboveSMA200 ? 'above' : 'below'} the 200-day SMA, ${aboveSMA50 ? 'above' : 'below'} the 50-day SMA. ${near52Low ? 'Trading near 52-week lows presents a potential value entry.' : ''}`
-  } else if (bearSignals >= bullSignals + 3) {
+  } else if (bearSignals >= bullSignals + 2) {
     recommendation = 'SELL'
     recReason = `Strong bearish pressure with ${bearSignals} bearish signals vs ${bullSignals} bullish. ${deathCross ? 'Death cross pattern warns of sustained downtrend. ' : ''}${macdBearish ? 'MACD below signal line shows fading momentum. ' : ''}${rsiOverbought ? 'RSI in overbought territory suggests a pullback is likely. ' : rsiBearish ? 'RSI confirms bearish momentum. ' : ''}Price is ${!aboveSMA200 ? 'below the critical 200-day SMA, a bearish sign. ' : 'still above 200-day SMA but showing weakness. '}${near52High ? 'Near 52-week highs with deteriorating technicals suggests distribution.' : ''}`
   } else {
