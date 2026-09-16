@@ -6,11 +6,11 @@ Execution is handled by the main OpenClaw session.
 Usage: python3 propose_trade.py BUY AAPL 50 258.82 245.00 284.00 "RSI oversold at support" 62.5 1234567
        args: action ticker shares price sl tp reason rsi volume
 """
-import sys, json, urllib.request, time
+import os, sys, json, urllib.request, time
 from datetime import datetime
 from pathlib import Path
 
-TG_TOKEN = '8609316971:AAFhvA7fOyXRx5ch5Mm740ajcjMRD5brIr4'
+TG_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 TG_CHAT  = '786437034'
 
 def send(msg, buttons=None):

@@ -9,17 +9,16 @@ Used by:
   - morning_briefing.py (Option 2): daily market summary
   - on-demand: python3 fetch_news.py [TICKER]
 """
-import json, re, urllib.request, urllib.parse
+import json, os, re, urllib.request, urllib.parse
 from datetime import datetime, timezone, timedelta
 
-FINNHUB_KEY  = 'cq35tlpr01qkgf3jbhkgcq35tlpr01qkgf3jbhl0'
-TAVILY_KEY   = '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'
+FINNHUB_KEY  = os.environ.get('FINNHUB_API_KEY', '')
+TAVILY_KEY   = os.environ.get('TAVILY_API_KEY', '')
 TAVILY_URL   = 'https://api.tavily.com/search'
-GROQ_KEY     = 'ollama'  # no auth needed for local Ollama
-GROQ_URL     = 'http://192.168.10.163:11434/api/chat'  # native Ollama API supports think=false
-GROQ_MODEL   = 'qwen3.5:122b'
-IBKR_HOST    = '172.23.160.1'
-IBKR_PORT    = 4002
+LLM_URL      = os.environ.get('OPENAI_API_URL', 'http://192.168.10.163:8000/v1') + '/chat/completions'  # GX10 vLLM
+LLM_MODEL    = os.environ.get('AI_MODEL', 'qwen3.8-flash-next')
+IBKR_HOST    = os.environ.get('IBKR_HOST', 'host.docker.internal')
+IBKR_PORT    = int(os.environ.get('IBKR_PORT', '4002'))  # paper account
 
 # IBKR news providers (ordered by quality)
 IBKR_PROVIDERS_TICKER  = 'BRFUPDN,BRFG,DJ-RTG'   # analyst actions first, then general
@@ -191,22 +190,28 @@ def get_market_news(limit: int = 8) -> list[dict]:
 
 # ── LLM summarisation ─────────────────────────────────────────────────────────
 
-def groq_summarise(prompt: str, max_tokens: int = 300) -> str:
-    """Call Groq LLM. Uses browser UA to avoid Cloudflare block."""
-    # Use Ollama native API with think=false for fast responses
+def llm_summarise(prompt: str, max_tokens: int = 300) -> str:
+    """Call GX10 vLLM (OpenAI-compatible). Thinking disabled via chat_template_kwargs."""
     body = json.dumps({
-        'model': GROQ_MODEL,
+        'model': LLM_MODEL,
         'messages': [{'role': 'user', 'content': prompt}],
-        'think': False,
+        'max_tokens': max_tokens,
+        'temperature': 0.3,
         'stream': False,
-        'options': {'temperature': 0.3, 'num_predict': max_tokens},
+        'chat_template_kwargs': {'enable_thinking': False},
     }).encode()
-    req = urllib.request.Request(GROQ_URL, data=body, headers={'Content-Type': 'application/json'})
+    req = urllib.request.Request(LLM_URL, data=body,
+                                 headers={'Content-Type': 'application/json',
+                                          'Authorization': '***'})
     try:
-        resp = json.loads(urllib.request.urlopen(req, timeout=60).read())
-        return resp['message']['content'].strip()
-    except:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            resp = json.loads(r.read())
+        msg = resp['choices'][0]['message']
+        return (msg.get('content') or msg.get('reasoning') or '').strip()
+    except Exception:
         return ''
+
+groq_summarise = llm_summarise  # legacy name kept for callers
 
 
 def summarise_market_news(news: list[dict]) -> str:

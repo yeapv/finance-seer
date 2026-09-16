@@ -1,4 +1,6 @@
 #!/bin/bash
+# HISTORICAL (2026-09-15): part of the abandoned Ollama/SGLang/LM Studio migration;
+# GX10 now runs vLLM (http://192.168.10.163:8000/v1, qwen3.8-flash-next). Do not execute.
 # Vane Removal & Warmup Cron Cleanup Script
 # Execute on GX10: 192.168.10.163
 # Date: 2026-04-15

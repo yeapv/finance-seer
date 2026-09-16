@@ -4,11 +4,11 @@ Morning Briefing — fires at NYSE open (13:30 UTC / 21:30 SGT) Mon-Fri.
 Sends a market summary + watchlist sentiment to Telegram.
 Cron: 30 13 * * 1-5
 """
-import json, urllib.request
+import os, json, urllib.request
 from datetime import datetime, timezone
 from fetch_news import get_market_news, get_ticker_news, get_ticker_sentiment, summarise_market_news, summarise_ticker_news, groq_summarise, FINNHUB_KEY
 
-TG_TOKEN  = '8609316971:AAFhvA7fOyXRx5ch5Mm740ajcjMRD5brIr4'
+TG_TOKEN  = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 TG_CHAT   = '786437034'
 WATCHLIST = ['ADSK', 'MSFT', 'NVDA', 'INTC', 'AMD', 'CRWV', 'NBIS', 'AAPL']
 

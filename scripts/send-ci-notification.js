@@ -12,12 +12,12 @@ const https = require('https');
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 // GITHUB_REPOSITORY is 'owner/repo' — use it directly for URLs, strip owner for display
-const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY || 'yeapvin/finance-seer';
+const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY || 'yeapv/finance-seer';
 const REPO_NAME = GITHUB_REPOSITORY.split('/').pop() || 'finance-seer'; // display name only
 const COMMIT_HASH = process.env.GITHUB_SHA || 'unknown';
 const RUN_ID = process.env.GITHUB_RUN_ID || 'unknown';
 const SERVER_URL = process.env.GITHUB_SERVER_URL || 'https://github.com';
-const REPO_OWNER = process.env.GITHUB_REPOSITORY_OWNER || 'yeapvin';
+const REPO_OWNER = process.env.GITHUB_REPOSITORY_OWNER || 'yeapv';
 
 /**
  * Send message to Telegram

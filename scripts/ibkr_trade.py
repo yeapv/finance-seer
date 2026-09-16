@@ -9,11 +9,11 @@ Usage:
   python3 ibkr_trade.py POSITIONS
 Returns JSON.
 """
-import sys, json, time, threading
+import os, sys, json, time, threading
 from ib_insync import IB, Stock, LimitOrder
 
-HOST    = '172.23.160.1'
-PORT    = 4002
+HOST    = os.environ.get('IBKR_HOST', 'host.docker.internal')
+PORT    = int(os.environ.get('IBKR_PORT', '4002'))
 ACCOUNT = 'DU7992310'
 LIMIT_TIMEOUT_MINS = 30  # Auto-cancel after 30 minutes if unfilled
 
@@ -34,7 +34,7 @@ def auto_cancel(order_id: int, delay_secs: int):
                 ib.sleep(1)
                 # Send Telegram alert
                 import urllib.request
-                TG_TOKEN = '8609316971:AAFhvA7fOyXRx5ch5Mm740ajcjMRD5brIr4'
+                TG_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
                 TG_CHAT  = '786437034'
                 msg = f'⏰ Order #{order_id} cancelled — not filled within {LIMIT_TIMEOUT_MINS} minutes.'
                 body = json.dumps({'chat_id': TG_CHAT, 'text': msg}).encode()

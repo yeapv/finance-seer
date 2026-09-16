@@ -7,7 +7,7 @@ Your CI/CD is currently allowing failed deployments because **GitHub branch prot
 ### **Step-by-Step Setup:**
 
 1. **Go to your repository:**
-   https://github.com/yeapvin/finance-seer/settings/branches
+   https://github.com/yeapv/finance-seer/settings/branches
 
 2. **Click:** "Add branch protection rule"
 

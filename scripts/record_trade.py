@@ -7,13 +7,13 @@ Usage:
   python3 record_trade.py BUY AAPL 50 258.80 318.29 1.45
   args: action ticker shares limitPrice avgFillPrice commission
 """
-import sys, json, urllib.request
+import os, sys, json, urllib.request
 from datetime import datetime
 from pathlib import Path
 
 PORTFOLIO = Path(__file__).parent.parent / 'data' / 'portfolio.json'
-KV_URL    = 'https://clean-eagle-92052.upstash.io'
-KV_TOKEN  = 'gQAAAAAAAWeUAAIncDFiZmRiYzc1NDY1YjI0NjU3YTYwMzc4Y2Y4ZTIxZWUzNHAxOTIwNTI'
+KV_URL    = os.environ.get('UPSTASH_REDIS_URL', 'https://clean-eagle-92052.upstash.io')
+KV_TOKEN  = os.environ.get('UPSTASH_REDIS_TOKEN', '')
 
 def kv_set(data):
     req = urllib.request.Request(f'{KV_URL}/set/portfolio',

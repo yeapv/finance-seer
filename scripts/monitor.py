@@ -8,22 +8,22 @@ Finance Seer Local Monitor — runs every 10 min during NYSE hours
 5. Execute approved trades via IBKR
 6. Push updated portfolio to KV + GitHub
 """
-import json, sys, time, subprocess, urllib.request, urllib.parse
+import os, json, sys, time, subprocess, urllib.request, urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────────────────────
 REJECTED_TRADES = Path(__file__).parent / 'rejected_trades.json'
-IBKR_HOST    = '172.23.160.1'
-IBKR_PORT    = 4002
+IBKR_HOST    = os.environ.get('IBKR_HOST', 'host.docker.internal')
+IBKR_PORT    = int(os.environ.get('IBKR_PORT', '4002'))
 IBKR_ACCOUNT = 'DU7992310'
 PORTFOLIO    = Path(__file__).parent.parent / 'data' / 'portfolio.json'
 SCRIPTS      = Path(__file__).parent
 IBKR_CLI     = SCRIPTS / 'ibkr_execute.py'  # uses limit orders + commission tracking
 SYNC_SCRIPT  = SCRIPTS / 'sync_from_ibkr.py'
-KV_URL       = 'https://clean-eagle-92052.upstash.io'
-KV_TOKEN     = 'gQAAAAAAAWeUAAIncDFiZmRiYzc1NDY1YjI0NjU3YTYwMzc4Y2Y4ZTIxZWUzNHAxOTIwNTI'
-TG_TOKEN     = '8609316971:AAFhvA7fOyXRx5ch5Mm740ajcjMRD5brIr4'
+KV_URL    = os.environ.get('UPSTASH_REDIS_URL', 'https://clean-eagle-92052.upstash.io')
+KV_TOKEN  = os.environ.get('UPSTASH_REDIS_TOKEN', '')
+TG_TOKEN     = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 TG_CHAT      = '786437034'
 FINANCE_SEER = 'https://finance-seer.vercel.app'
 

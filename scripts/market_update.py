@@ -7,17 +7,17 @@ Called by cron:
   01:00 SGT Mon-Fri = 17:00 UTC (mid-session)
   04:05 SGT Mon-Fri = 20:05 UTC (NYSE close)
 """
-import json, sys, urllib.request, subprocess
+import os, json, sys, urllib.request, subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPTS   = Path(__file__).parent
 PORTFOLIO = SCRIPTS.parent / 'data' / 'portfolio.json'
-TG_TOKEN  = '8609316971:AAFhvA7fOyXRx5ch5Mm740ajcjMRD5brIr4'
+TG_TOKEN  = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 TG_CHAT   = '786437034'
 
-IBKR_HOST    = '172.23.160.1'
-IBKR_PORT    = 4002
+IBKR_HOST    = os.environ.get('IBKR_HOST', 'host.docker.internal')
+IBKR_PORT    = int(os.environ.get('IBKR_PORT', '4002'))
 IBKR_ACCOUNT = 'DU7992310'
 
 LABELS = {

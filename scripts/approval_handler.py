@@ -10,12 +10,12 @@ import json, time, subprocess, sys, os
 from datetime import datetime
 from pathlib import Path
 
-TG_TOKEN  = '8609316971:AAFhvA7fOyXRx5ch5Mm740ajcjMRD5brIr4'
+TG_TOKEN  = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 TG_CHAT   = '786437034'
 SCRIPTS   = Path(__file__).parent
 PORTFOLIO = SCRIPTS.parent / 'data' / 'portfolio.json'
-KV_URL    = 'https://clean-eagle-92052.upstash.io'
-KV_TOKEN  = 'gQAAAAAAAWeUAAIncDFiZmRiYzc1NDY1YjI0NjU3YTYwMzc4Y2Y4ZTIxZWUzNHAxOTIwNTI'
+KV_URL    = os.environ.get('UPSTASH_REDIS_URL', 'https://clean-eagle-92052.upstash.io')
+KV_TOKEN  = os.environ.get('UPSTASH_REDIS_TOKEN', '')
 
 import urllib.request
 

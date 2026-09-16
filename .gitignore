@@ -60,3 +60,6 @@ backup/
 # Live portfolio data (runtime) — stored in KV, not git
 data/portfolio.json
 # portfolio.seed.json IS tracked (schema reference + dev default)
+.env.production
+.env.vercel
+__pycache__/

@@ -1,4 +1,7 @@
 # Migration Plan: GX10 Ollama → SGLang (GX10) + LM Studio (AMD AI Max)
+
+> **Status update (2026-09-15): ABANDONED — not the current stack.** This was a proposal, never executed as written. The GX10 today serves **vLLM** (`http://192.168.10.163:8000/v1`, model `qwen3.8-flash-next`; validated 32 tok/s decode baseline 2026-09-15), and **LM Studio is also retired**. Keep as a decision record; do **not** follow as setup instructions.
+
 **Status: PROPOSAL — No changes made. Review before execution.**
 **Prepared by: Jared (AI Assistant)**
 **Date: 2026-04-15**

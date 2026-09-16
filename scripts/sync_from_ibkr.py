@@ -12,12 +12,12 @@ from datetime import datetime
 from pathlib import Path
 from ib_insync import IB, Stock
 
-HOST = '172.23.160.1'
-PORT = 4002
+HOST = os.environ.get('IBKR_HOST', 'host.docker.internal')
+PORT = int(os.environ.get('IBKR_PORT', '4002'))
 ACCOUNT = 'DU7992310'
 PORTFOLIO_PATH = Path(__file__).parent.parent / 'data' / 'portfolio.json'
-KV_URL   = 'https://clean-eagle-92052.upstash.io'
-KV_TOKEN = 'gQAAAAAAAWeUAAIncDFiZmRiYzc1NDY1YjI0NjU3YTYwMzc4Y2Y4ZTIxZWUzNHAxOTIwNTI'
+KV_URL    = os.environ.get('UPSTASH_REDIS_URL', 'https://clean-eagle-92052.upstash.io')
+KV_TOKEN  = os.environ.get('UPSTASH_REDIS_TOKEN', '')
 SGD_USD_FALLBACK = 0.7854
 
 CLIENT_ID = 4  # fixed clientId for sync

@@ -9,12 +9,12 @@ Usage:
   python3 ibkr_execute.py SELL AAPL 50 260.00
 Returns JSON with: orderId, filled, avgFillPrice, commission, totalCost
 """
-import sys, json, time, subprocess
+import os, sys, json, time, subprocess
 from pathlib import Path
 from ib_insync import IB, Stock, LimitOrder
 
-HOST    = '172.23.160.1'
-PORT    = 4002
+HOST    = os.environ.get('IBKR_HOST', 'host.docker.internal')
+PORT    = int(os.environ.get('IBKR_PORT', '4002'))
 ACCOUNT = 'DU7992310'
 FILL_WAIT_SECS = 10   # wait up to 10s for fill confirmation
 CANCEL_AFTER   = 30 * 60  # auto-cancel after 30 min
@@ -126,7 +126,7 @@ def main():
                             ib2.cancelOrder(o)
                             ib2.sleep(1)
                             import urllib.request
-                            TG_TOKEN = '8609316971:AAFhvA7fOyXRx5ch5Mm740ajcjMRD5brIr4'
+                            TG_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
                             msg = json.dumps({'chat_id': '786437034',
                                 'text': f'⏰ Order #{order_id} ({action} {shares}x {ticker} @ ${price}) cancelled — not filled within 30 min.'})
                             req = urllib.request.Request(
