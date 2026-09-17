@@ -93,8 +93,11 @@ function startMonitor() {
   
   console.log('[Heartbeat] Starting monitor.py...')
   
-  // Run monitor.py in background (detached)
-  const cmd = `cd ${CONFIG.scriptDir} && nohup python3 ${CONFIG.monitorScript} > ${logFile} 2>&1 & echo $!`
+  // Run monitor.py in background (detached). Prefer project venv (has yfinance/
+  // tvscreener for the performance ledger); fall back to system python3.
+  const venvPy = path.join(CONFIG.scriptDir, '..', '.venv', 'bin', 'python')
+  const py = fs.existsSync(venvPy) ? venvPy : 'python3'
+  const cmd = `cd ${CONFIG.scriptDir} && nohup ${py} ${CONFIG.monitorScript} > ${logFile} 2>&1 & echo $!`
   
   return new Promise((resolve, reject) => {
     exec(cmd, { timeout: 5000 }, (error, stdout, stderr) => {

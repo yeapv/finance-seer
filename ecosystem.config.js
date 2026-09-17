@@ -23,7 +23,7 @@ module.exports = {
     },
     {
       name: 'finance-seer-monitor',
-      script: 'python3',
+      script: path.join(ROOT, '.venv', 'bin', 'python'),
       args: './monitor.py',
       cwd: path.join(ROOT, 'scripts'),
       env: {
