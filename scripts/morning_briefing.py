@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from fetch_news import get_market_news, get_ticker_news, get_ticker_sentiment, summarise_market_news, summarise_ticker_news, groq_summarise, FINNHUB_KEY
 
 TG_TOKEN  = os.environ.get('TELEGRAM_BOT_TOKEN', '')
-TG_CHAT   = '786437034'
+TG_CHAT   = os.environ.get('TELEGRAM_CHAT_ID', '786437034')
 WATCHLIST = ['ADSK', 'MSFT', 'NVDA', 'INTC', 'AMD', 'CRWV', 'NBIS', 'AAPL']
 
 def send_telegram(msg: str):
@@ -62,7 +62,17 @@ def main():
             if news:
                 mover_news[ticker] = summarise_ticker_news(ticker, news, sentiment)
 
-    # 3. Build message
+    # 3. SGX dividend shortlist (report-only; daily cached screen)
+    sgx_block = []
+    try:
+        import sgx_screen
+        shortlist = sgx_screen.digest_text(top=6)
+        if shortlist:
+            sgx_block = ['', shortlist]
+    except Exception as e:
+        print(f'SGX screen skipped: {e}')
+
+    # 4. Build message
     lines = [
         f'☀️ *Morning Briefing — {date_str}*',
         f'NYSE Open 🔔',
@@ -78,6 +88,7 @@ def main():
         for ticker, blurb in mover_news.items():
             lines.append(f'*{ticker}:* {blurb}')
 
+    lines += sgx_block
     lines += ['', '_Finance Seer • Screener running_']
 
     send_telegram('\n'.join(lines))

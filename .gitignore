@@ -65,3 +65,5 @@ data/portfolio.json
 __pycache__/
 # Runtime state (signal performance ledger)
 data/performance_ledger.json
+# Runtime state (SGX screen cache)
+data/sgx_screen_cache.json
