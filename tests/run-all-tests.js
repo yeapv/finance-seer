@@ -1,6 +1,6 @@
 /**
  * Finance Seer - Complete Test Suite
- * 141 test cases covering all core functionality
+ * 144 test cases covering safety, heartbeat and market-data integration
  */
 
 let passed = 0;
@@ -40,7 +40,7 @@ function assertNumber(val, message) {
 }
 
 console.log('\n🧪 Finance Seer Test Suite\n');
-console.log('Running 141 tests...\n');
+console.log('Running 144 unit + behavior tests...\n');
 
 // ===== SECTION 1: Trading Safety Tests (37 tests) =====
 console.log('\n📋 Section 1: Trading Safety Tests');

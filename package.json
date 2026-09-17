@@ -10,7 +10,9 @@
     "lint": "next lint",
     "test": "node tests/run-all-tests.js",
     "test:v2": "node tests/run-all-tests-v2.js",
-    "test:integration": "node tests/run-integration-tests.js"
+    "test:integration": "node tests/run-integration-tests.js",
+    "test:algo": "node tests/run-algorithm-tests.js",
+    "test:all": "node tests/run-all-tests.js && node tests/run-algorithm-tests.js"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.3.0",

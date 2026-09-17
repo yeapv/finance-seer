@@ -130,7 +130,7 @@ async function callLLM(prompt: string, stock: StockData, rsi: number, macd: numb
   return generateDataDrivenAnalysis(stock, rsi, macd, macdSignal, sma20, sma50, sma200, bb, patterns, support, resistance, news, volumes, prices, trueRanges)
 }
 
-function generateDataDrivenAnalysis(stock: StockData, rsi: number, macd: number, macdSignal: number, sma20: number, sma50: number, sma200: number, bb: any, patterns: PatternMatch[], support: number[], resistance: number[], news: string[], volumes: number[], prices: number[] = [], trueRanges: number[] = []): string {
+export function generateDataDrivenAnalysis(stock: StockData, rsi: number, macd: number, macdSignal: number, sma20: number, sma50: number, sma200: number, bb: any, patterns: PatternMatch[], support: number[], resistance: number[], news: string[], volumes: number[], prices: number[] = [], trueRanges: number[] = []): string {
   const p = stock.price
   const fmt = (n: number) => n ? '$' + n.toFixed(2) : 'N/A'
 

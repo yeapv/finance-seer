@@ -73,14 +73,17 @@ jobs:
     - name: Run Unit Tests
       id: run
       shell: bash
-      run: set -o pipefail; node tests/run-all-tests.js 2>&1 | tee /tmp/unit-test-output.txt
+      run: |
+        set -o pipefail
+        { node tests/run-all-tests.js; U=$?; node tests/run-algorithm-tests.js; A=$?;
+          [ $U -eq 0 ] && [ $A -eq 0 ]; } 2>&1 | tee /tmp/unit-test-output.txt
 
     - name: Parse test results
       id: parse
       if: always()
       run: |
-        PASSED=$(grep -oP 'Passed: \K[0-9]+' /tmp/unit-test-output.txt | tail -1 || echo 0)
-        TOTAL=$(grep -oP 'Total:  \K[0-9]+' /tmp/unit-test-output.txt | tail -1 || echo 0)
+        PASSED=$(grep -oP 'Passed: \K[0-9]+' /tmp/unit-test-output.txt | paste -sd+ | bc)
+        TOTAL=$(grep -oP 'Total:  \K[0-9]+' /tmp/unit-test-output.txt | paste -sd+ | bc)
         FAILED=$((TOTAL - PASSED))
         echo "passed=${PASSED}" >> $GITHUB_OUTPUT
         echo "total=${TOTAL}" >> $GITHUB_OUTPUT
