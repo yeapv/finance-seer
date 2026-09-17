@@ -166,10 +166,35 @@ def get_news_context(ticker: str) -> str:
         log(f'  News fetch error for {ticker}: {e}')
         return ''
 
-def propose_trade(action: str, ticker: str, shares: int, price: float, sl: float, tp: float, reason: str, rsi: float = 0, volume: int = 0, news_context: str = ''):
+def ledger_log(ticker: str, side: str, price: float, trade: dict, executed: bool = False,
+               shares: int = 0, sl: float = 0, tp: float = 0, reason: str = ''):
+    """Best-effort signal logging to the performance ledger; never interrupts trading."""
+    try:
+        import performance_ledger as ledger
+        from argparse import Namespace
+        a = Namespace(
+            ticker=ticker, side=side, price=price,
+            confidence=trade.get('confidence', 'N/A'),
+            setup=trade.get('setup', 'N/A'),
+            rsi=trade.get('rsi'), rr=trade.get('rr'),
+            executed=executed, shares=shares,
+            sl=sl or trade.get('sl'), tp=tp or trade.get('tp'),
+            reason=reason or trade.get('reason', ''),
+        )
+        return ledger.cmd_log(a)
+    except Exception as e:
+        log(f'  ledger log failed ({ticker}): {e}')
+        return None
+
+
+def propose_trade(action: str, ticker: str, shares: int, price: float, sl: float, tp: float, reason: str, rsi: float = 0, volume: int = 0, news_context: str = '', trade: dict | None = None):
     """Auto-execute trade via IBKR immediately, then notify via Telegram."""
     import subprocess
     log(f'  Auto-executing: {action} {shares}x {ticker} @ ${price:.2f}')
+
+    # Signal performance ledger: record executed signal (best-effort, never blocks trading)
+    if trade:
+        ledger_log(ticker, action, price, trade, executed=True, shares=shares, sl=sl, tp=tp, reason=reason)
 
     # Execute immediately via IBKR
     result = ibkr_trade(action, ticker, shares, price)
@@ -770,7 +795,8 @@ def main():
             propose_trade('SELL', pos['ticker'], shares, price,
                           pos.get('stopLoss', round(price*0.95,2)),
                           pos.get('takeProfit', round(price*1.08,2)),
-                          full_reason, news_context=news_ctx)
+                          full_reason, news_context=news_ctx,
+                          trade={'confidence': 'EXIT', 'setup': reason.split(' at')[0]})
             log(f'SL/TP signal proposed: SELL {shares}x {pos["ticker"]} @ ${price:.2f}')
 
     # 3. Scan for buy opportunities
@@ -797,6 +823,7 @@ def main():
     log(f'Local screener found {len(candidates)} candidates')
 
     buys_done = 0
+    executed_tickers = set()
     for trade in candidates:
         if trade.get('type') != 'BUY':
             continue
@@ -831,11 +858,25 @@ def main():
 
         propose_trade('BUY', ticker, shares, price, sl, tp, reason,
                      rsi=trade.get('rsi', 0), volume=trade.get('volume', 0),
-                     news_context=news_ctx)
+                     news_context=news_ctx, trade=trade)
+        executed_tickers.add(ticker)
         log(f'Buy signal proposed: {shares}x {ticker} @ ${price:.2f}')
         buys_done += 1
         deployable -= cost
         n_positions += 1
+
+    # Counterfactual ledger: BUY candidates that passed screens but weren't executed
+    # (position caps / sizing rejects) — feeds signal-quality stats on capital discipline.
+    try:
+        for trade in candidates:
+            if trade.get('type') != 'BUY':
+                continue
+            t = trade['ticker']
+            if t in executed_tickers:
+                continue
+            ledger_log(t, 'BUY', trade.get('price') or 0, trade, executed=False)
+    except Exception as e:
+        log(f'  counterfactual ledger pass failed: {e}')
 
     log('Monitor run complete')
 

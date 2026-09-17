@@ -63,3 +63,5 @@ data/portfolio.json
 .env.production
 .env.vercel
 __pycache__/
+# Runtime state (signal performance ledger)
+data/performance_ledger.json
