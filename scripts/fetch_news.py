@@ -212,6 +212,7 @@ def llm_summarise(prompt: str, max_tokens: int = 300) -> str:
         return ''
 
 groq_summarise = llm_summarise  # legacy name kept for callers
+get_ticker_sentiment = get_finnhub_sentiment  # legacy name (used by morning_briefing/monitor)
 
 
 def summarise_market_news(news: list[dict]) -> str:

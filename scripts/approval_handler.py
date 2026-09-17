@@ -54,6 +54,10 @@ def kv_set(data):
 
 def execute_trade(action: str, ticker: str):
     """Find pending trade details from portfolio and execute."""
+    import os
+    if os.environ.get('FINSEER_EXECUTION', 'disabled') != 'enabled':
+        log('Execution disabled (FINSEER_EXECUTION!=enabled) - advisory mode; trade NOT placed')
+        return
     try:
         with open(PORTFOLIO) as f:
             p = json.load(f)

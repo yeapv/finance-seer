@@ -112,6 +112,8 @@ def get_recent_messages(since_ts: float) -> list[str]:
 
 def ibkr_trade(action: str, ticker: str, shares: int, price: float) -> dict:
     """Execute limit order via IBKR. price is required (no market orders)."""
+    if os.environ.get('FINSEER_EXECUTION', 'disabled') != 'enabled':
+        return {'error': 'execution disabled (FINSEER_EXECUTION!=enabled) - advisory mode'}
     if not price or price <= 0:
         return {'error': 'Price required for limit orders'}
     args = [sys.executable, str(IBKR_CLI), action, ticker, str(shares), str(round(price, 2))]
@@ -881,8 +883,11 @@ def main():
     log('Monitor run complete')
 
 if __name__ == '__main__':
-    # Continuous monitoring loop
-    # Runs every 10 minutes during NYSE hours
-    while True:
-        main()
-        time.sleep(600)  # 10 minutes
+    if '--once' in sys.argv:
+        main()          # scheduled single-shot mode (Hermes cron)
+    else:
+        # Continuous monitoring loop
+        # Runs every 10 minutes during NYSE hours
+        while True:
+            main()
+            time.sleep(600)  # 10 minutes
