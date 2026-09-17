@@ -2,6 +2,11 @@
 # FinancialSeer scheduled-run wrapper: loads repo .env, runs one script, logs heartbeat.
 # usage: run.sh scripts/<name>.py [args...]
 set -a; source "$(dirname "$0")/.env"; set +a
+# Deliver as the Hermes bot (this chat), not the legacy lobster_eng_bot.
+if [ -f /opt/data/.env ]; then
+  HTOK=$(grep -oP '^TELEGRAM_BOT_TOKEN=\K\S+' /opt/data/.env | head -1)
+  [ -n "$HTOK" ] && export TELEGRAM_BOT_TOKEN="$HTOK"
+fi
 cd "$(dirname "$0")" || exit 1
 SCRIPT="$1"; shift
 mkdir -p logs
