@@ -2,7 +2,7 @@
 
 ## Ownership and paths
 
-- Primary agent: Hermes.
+- Primary agent: Hermes. **Confirmed by owner 2026-09-16: OpenClaw becomes inspect-only** after the May–Sep parallel-work fork was reconciled by merge (see git history merge commit).
 - Windows source: `C:\Projects\FinancialSeer`.
 - Hermes path: `/opt/data/projects/FinancialSeer`.
 - OpenClaw path: `/home/openclaw/.openclaw/workspace/finance-seer`.

@@ -55,6 +55,7 @@ jobs:
     outputs:
       unit_passed: ${{ steps.parse.outputs.passed }}
       unit_total: ${{ steps.parse.outputs.total }}
+      unit_failures: ${{ steps.parse.outputs.failures }}
 
     steps:
     - uses: actions/checkout@v5
@@ -80,8 +81,15 @@ jobs:
       run: |
         PASSED=$(grep -oP 'Passed: \K[0-9]+' /tmp/unit-test-output.txt | tail -1 || echo 0)
         TOTAL=$(grep -oP 'Total:  \K[0-9]+' /tmp/unit-test-output.txt | tail -1 || echo 0)
+        FAILED=$((TOTAL - PASSED))
         echo "passed=${PASSED}" >> $GITHUB_OUTPUT
         echo "total=${TOTAL}" >> $GITHUB_OUTPUT
+        echo "failed=${FAILED}" >> $GITHUB_OUTPUT
+        # Extract failure details
+        FAILURES=$(grep -A1 '❌' /tmp/unit-test-output.txt | sed 's/^[[:space:]]*//;s/❌ //;s/:.*//' | tr '\n' ' | ' | sed 's/ | $//')
+        echo "failures<<EOF" >> $GITHUB_OUTPUT
+        echo "${FAILURES:-}" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
         echo "Unit tests: ${PASSED}/${TOTAL}"
 
   # ====== PHASE 3: INTEGRATION TESTS ======
@@ -92,6 +100,7 @@ jobs:
     outputs:
       int_passed: ${{ steps.parse.outputs.passed }}
       int_total: ${{ steps.parse.outputs.total }}
+      int_failures: ${{ steps.parse.outputs.failures }}
 
     steps:
     - uses: actions/checkout@v5
@@ -129,8 +138,14 @@ jobs:
       run: |
         PASSED=$(grep -oP 'Passed: \K[0-9]+' /tmp/int-test-output.txt | tail -1 || echo 0)
         TOTAL=$(grep -oP 'Total:  \K[0-9]+' /tmp/int-test-output.txt | tail -1 || echo 0)
+        FAILED=$((TOTAL - PASSED))
         echo "passed=${PASSED}" >> $GITHUB_OUTPUT
         echo "total=${TOTAL}" >> $GITHUB_OUTPUT
+        echo "failed=${FAILED}" >> $GITHUB_OUTPUT
+        FAILURES=$(grep -A1 '❌' /tmp/int-test-output.txt | sed 's/^[[:space:]]*//;s/❌ //;s/:.*//' | tr '\n' ' | ' | sed 's/ | $//')
+        echo "failures<<EOF" >> $GITHUB_OUTPUT
+        echo "${FAILURES:-}" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
         echo "Integration tests: ${PASSED}/${TOTAL}"
 
   # ====== PHASE 4: DEPLOY (gated on tests passing) ======
@@ -194,5 +209,9 @@ jobs:
         GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         UNIT_PASSED: ${{ needs.unit-tests.outputs.unit_passed }}
         UNIT_TOTAL: ${{ needs.unit-tests.outputs.unit_total }}
+        UNIT_FAILED: ${{ needs.unit-tests.outputs.failed }}
+        UNIT_FAILURES: ${{ needs.unit-tests.outputs.failures }}
         INT_PASSED: ${{ needs.integration-tests.outputs.int_passed }}
         INT_TOTAL: ${{ needs.integration-tests.outputs.int_total }}
+        INT_FAILED: ${{ needs.integration-tests.outputs.failed }}
+        INT_FAILURES: ${{ needs.integration-tests.outputs.failures }}

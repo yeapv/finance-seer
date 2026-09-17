@@ -42,8 +42,8 @@ BLACKLIST = {
 }
 
 # Minimum requirements to prevent micro-cap / illiquid stocks
-MIN_VOLUME_FLOOR   = 5_000_000   # absolute minimum daily volume
-MIN_MARKET_CAP     = 10_000_000_000  # $10B minimum market cap
+MIN_VOLUME_FLOOR   = 1_000_000   # absolute minimum daily volume
+MIN_MARKET_CAP     = 1_000_000_000   # $1B minimum market cap
 
 
 IBKR_CONNECT_RETRIES = 3
@@ -285,8 +285,8 @@ def tv_bulk_screen(held: list) -> list:
 
         sc = StockScreener()
         sc.set_markets(Market.AMERICA)
-        # Base filters: price $25+, volume 5M+ (raised floor), market cap $10B+
-        sc.add_filter(StockField.PRICE, FilterOperator.ABOVE, 25)
+        # Base filters: price $10+, volume 1M+, market cap $1B+
+        sc.add_filter(StockField.PRICE, FilterOperator.ABOVE, 10)
         sc.add_filter(StockField.VOLUME, FilterOperator.ABOVE, MIN_VOLUME_FLOOR)
         sc.add_filter(StockField.MARKET_CAPITALIZATION, FilterOperator.ABOVE, MIN_MARKET_CAP)
         df = sc.get()
@@ -322,14 +322,14 @@ def tv_bulk_screen(held: list) -> list:
 
             # HARD GATES — skip if any fail:
             # 1. RSI genuinely oversold
-            oversold = rsi < 30
+            oversold = rsi < 40
             if not oversold: continue
 
             # 2. MACD must be bullish (momentum confirming bounce, not still falling)
             if not macd_bullish: continue
 
-            # 3. Volume quality: >= 1.5x 10-day average (institutional accumulation)
-            if avg_vol > 0 and vol_ratio < 1.5: continue
+            # 3. Volume quality: >= 1.2x 10-day average (institutional accumulation)
+            if avg_vol > 0 and vol_ratio < 1.2: continue
 
             # 4. Absolute volume floor — reject illiquid micro-caps
             if volume < MIN_VOLUME_FLOOR: continue
