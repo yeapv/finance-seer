@@ -19,10 +19,11 @@
 ## Current technical baseline
 
 - Next.js 14/React/TypeScript frontend and API routes, plus Python automation scripts.
-- Core unit suite: `npm test` (144 tests passed during the 2026-09-14 audit).
-- The application build currently cannot start because Node dependencies are absent.
-- Several runtime paths and documents still target retired Ollama/Qwen3.5 endpoints. The current GX10 service is OpenAI-compatible vLLM at `http://192.168.10.163:8000/v1`, model `qwen3.8-flash-next`.
-- IBKR code currently assumes a WSL-to-Windows address and paper port 4002. From Hermes Docker, use an explicit configurable host such as `host.docker.internal`; do not add another hardcoded container-specific address.
+- Core unit suite: `npm test` — 144/144 passing (verified 2026-09-16 on merged master `da33829`; Node deps installed in the Hermes path).
+- AI stack unified on vLLM: `http://192.168.10.163:8000/v1`, model `qwen3.8-flash-next`, `enable_thinking:false` for non-reasoning output. Ollama, LM Studio and the SGLang migration proposal are all retired/historical; `scripts/fetch_news.py` is the reference LLM-call pattern.
+- IBKR: `IBKR_HOST` (default `host.docker.internal`) / `IBKR_PORT` (default 4002 paper) env-driven — no hardcoded WSL IPs.
+- Secrets: all credentials env-driven; `.env*` with secrets untracked. NOTE: Telegram bot token, Finnhub, Groq, Tavily and Upstash credentials remain readable in **git history** (pre-2026-09-16 commits) until the owner rotates them.
+- GitHub remote owner is `yeapv` (renamed from `yeapvin`).
 
 ## Trading safety boundary
 
