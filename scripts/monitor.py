@@ -67,8 +67,9 @@ def ibkr_connect(client_id: int, timeout: int = 15):
                 log(f'  Retrying in {IBKR_CONNECT_DELAY}s...')
                 time.sleep(IBKR_CONNECT_DELAY)
     log(f'  IBKR unavailable after {IBKR_CONNECT_RETRIES} attempts — skipping this cycle')
-    send_telegram(f'⚠️ IBKR connection failed after {IBKR_CONNECT_RETRIES} retries. '
-                  f'Check IB Gateway / concurrent session conflict.')
+    if os.environ.get('FINSEER_EXECUTION', 'disabled') == 'enabled':
+        send_telegram(f'⚠️ IBKR connection failed after {IBKR_CONNECT_RETRIES} retries. '
+                      f'Check IB Gateway / concurrent session conflict.')
     return None
 
 def kv_set(data: dict):
