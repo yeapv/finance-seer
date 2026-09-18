@@ -1,2 +1,3 @@
 tvscreener
 yfinance
+ib_insync
